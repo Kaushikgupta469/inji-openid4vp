@@ -78,7 +78,7 @@ fun createUrlEncodedData(
     val charset = StandardCharsets.UTF_8.toString()
 
     val queryString = authorizationRequestParam.entries.joinToString("&") {
-        "${it.key}=${URLEncoder.encode(it.value?.toString() ?: "", charset)}"
+        "${it.key}=${URLEncoder.encode(it.value?.toString() ?: "", charset).replace("+", "%20")}"
     }
 //    val urlEncodedQueryParameters = URLEncoder.encode(queryString, charset)
     return "openid4vp://authorize?$queryString"

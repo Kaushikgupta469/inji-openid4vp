@@ -335,6 +335,24 @@ class AuthorizationRequestUtilsTest {
     }
 
     @Test
+    fun `keeps a literal plus in a query parameter value`() {
+        val params = extractQueryParameters(
+            "openid4vp://authorize?client_id=verifier-1&vp_format=dc+sd-jwt"
+        )
+
+        assertEquals("dc+sd-jwt", params["vp_format"])
+    }
+
+    @Test
+    fun `decodes a percent encoded plus in a query parameter value`() {
+        val params = extractQueryParameters(
+            "openid4vp://authorize?client_id=verifier-1&vp_format=dc%2Bsd-jwt"
+        )
+
+        assertEquals("dc+sd-jwt", params["vp_format"])
+    }
+
+    @Test
     fun `rejects a uri with no query parameters`() {
         val exception = assertFailsWith<OpenID4VPExceptions.InvalidQueryParams> {
             extractQueryParameters("openid4vp://authorize")

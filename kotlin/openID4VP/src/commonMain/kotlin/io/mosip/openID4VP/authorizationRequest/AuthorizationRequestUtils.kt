@@ -76,7 +76,7 @@ fun extractQueryParameters(query: String): Map<String, Any> {
         val uri = URI(query)
         val queryParams: Map<String, String> = uri.rawQuery?.split("&")?.associate {
             val (key, value) = it.split("=")
-            key to URLDecoder.decode(value, "UTF-8")
+            key to percentDecode(value)
         } ?: throw OpenID4VPExceptions.InvalidQueryParams("Exception occurred when extracting the query params from Authorization Request : No Query params in the URI", className)
 
         return queryParams
@@ -84,6 +84,9 @@ fun extractQueryParameters(query: String): Map<String, Any> {
         throw OpenID4VPExceptions.InvalidQueryParams("Exception occurred when extracting the query params from Authorization Request : ${exception.message}", className)
     }
 }
+
+private fun percentDecode(value: String): String =
+    URLDecoder.decode(value.replace("+", "%2B"), "UTF-8")
 
 fun validateAuthorizationRequestObjectAndParameters(
     params: Map<String, Any>,
