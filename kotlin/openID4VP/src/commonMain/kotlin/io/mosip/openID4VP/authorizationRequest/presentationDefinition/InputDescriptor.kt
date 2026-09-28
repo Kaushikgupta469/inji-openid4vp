@@ -99,7 +99,7 @@ class InputDescriptor(
 	val purpose: String? = null,
 	val format: Map<String, Map<String,List<String>>>? = null,
 	val constraints: Constraints
-) {
+) : java.io.Serializable {
 	fun validate() {
 		try {
 			constraints.validate()

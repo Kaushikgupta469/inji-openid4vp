@@ -15,7 +15,7 @@ const val CLAIMS_QUERY_CLASS_NAME = "ClaimsQuery"
 data class DCQLQuery(
     val credentials: List<CredentialQuery>,
     val credentialSets: List<CredentialSetQuery>? = null
-) : Validatable {
+) : Validatable, java.io.Serializable {
 
     init {
         validate()
@@ -61,7 +61,7 @@ data class CredentialQuery(
     val requireCryptographicHolderBinding: Boolean = true,
     val claims: List<ClaimsQuery>? = null,
     val claimSets: List<List<String>>? = null
-) {
+) : java.io.Serializable {
     internal fun validate() {
         if (!VALID_ID_PATTERN.matches(id)) {
             throw OpenID4VPExceptions.InvalidData(
@@ -131,7 +131,7 @@ data class CredentialQuery(
 data class CredentialSetQuery(
     val options: List<List<String>>,
     val required: Boolean = true
-) {
+) : java.io.Serializable {
     init {
         validate()
     }
@@ -165,7 +165,7 @@ data class CredentialSetQuery(
     }
 }
 
-sealed class ClaimValue {
+sealed class ClaimValue : java.io.Serializable {
     data class StringValue(val value: String) : ClaimValue()
     data class LongValue(val value: Long) : ClaimValue()
     data class BoolValue(val value: Boolean) : ClaimValue()
@@ -190,7 +190,7 @@ data class ClaimsQuery(
     val id: String? = null,
     val path: List<Any?>,
     val values: List<ClaimValue>? = null
-) {
+) : java.io.Serializable {
     internal fun validate(isClaimSetsAvailable: Boolean) {
         if (isClaimSetsAvailable && id == null) {
             throw OpenID4VPExceptions.InvalidData(

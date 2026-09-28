@@ -390,8 +390,11 @@ private fun JsonElement.requireJsonPrimitive(
     return primitive
 }
 
-private fun JsonObject.toDynamicMap(): Map<String, Any> = entries.associate { (key, value) ->
-    key to (value.toDynamicValue() ?: JsonNull)
+private fun JsonObject.toDynamicMap(): Map<String, Any> = buildMap {
+    this@toDynamicMap.entries.forEach { (key, value) ->
+        val v = value.toDynamicValue()
+        if (v != null) put(key, v)
+    }
 }
 
 private fun JsonElement.toDynamicValue(): Any? = when (this) {

@@ -185,7 +185,7 @@ class ClientMetadata(
 	@SerialName("vp_formats_supported") val vpFormatsSupported: Map<String, VPFormatSupported>,
 	@SerialName("encrypted_response_enc_values_supported") val encryptedResponseEncValuesSupported: List<String>? = null,
 	@SerialName("jwks") val jwks: Jwks? = null,
-) : Validatable {
+) : Validatable, java.io.Serializable {
 	override fun validate() {
 		if (vpFormatsSupported.isEmpty()) {
 			throw OpenID4VPExceptions.InvalidInput(

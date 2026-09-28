@@ -70,7 +70,7 @@ object ConstraintsSerializer : KSerializer<Constraints> {
 class Constraints(
 	val fields: List<Fields>? = null,
 	@SerialName("limit_disclosure") val limitDisclosure: String? = null
-) {
+) : java.io.Serializable {
 	fun validate() {
 		try {
 			fields?.forEach { field ->

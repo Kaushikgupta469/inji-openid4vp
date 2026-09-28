@@ -67,4 +67,4 @@ object JwksSerializer : KSerializer<Jwks> {
 @Serializable(with = JwksSerializer::class)
 data class Jwks(
     val keys: List<Jwk>
-)
+) : java.io.Serializable

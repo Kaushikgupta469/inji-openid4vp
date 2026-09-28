@@ -77,9 +77,9 @@ private fun parseCredentialQuery(map: Map<String, Any>): CredentialQuery {
             listOf("credential_query", "format"), "", CLASS_NAME
         )
     val multiple = map["multiple"] as? Boolean ?: false
-    val meta = map["meta"] as? Map<String, Any> ?: throw OpenID4VPExceptions.MissingInput(
-        listOf("credential_query", "meta"), "", CLASS_NAME
-    )
+    val meta = (map["meta"] as? Map<*, *>)
+        ?.let { normalizeMap(it, listOf("credential_query", "meta")) }
+        ?: emptyMap()
     val requireCryptographicHolderBinding =
         map["require_cryptographic_holder_binding"] as? Boolean ?: true
 
@@ -102,15 +102,37 @@ private fun parseCredentialQuery(map: Map<String, Any>): CredentialQuery {
 @Suppress("UNCHECKED_CAST")
 private fun parseClaimsQuery(map: Map<String, Any>): ClaimsQuery {
     val id = map["id"] as? String
-    val path = map["path"] as? List<Any?>
+    val pathRaw = map["path"] as? List<*>
         ?: throw OpenID4VPExceptions.MissingInput(
             listOf("claims_query", "path"), "", CLASS_NAME
         )
+    val path = pathRaw.map { normalizeValue(it, listOf("claims_query", "path")) }
 
     val valuesRaw = map["values"] as? List<Any>
     val values = valuesRaw?.map { ClaimValue.from(it) }
 
     return ClaimsQuery(id = id, path = path, values = values)
+}
+
+private fun normalizeMap(map: Map<*, *>, fieldPath: List<String>): Map<String, Any> = buildMap {
+    map.forEach { (key, value) ->
+        val stringKey = key as? String ?: throw OpenID4VPExceptions.InvalidData(
+            "meta keys must be strings at ${fieldPath.joinToString(".")}", CLASS_NAME
+        )
+        val normalized = normalizeValue(value, fieldPath + stringKey)
+        if (normalized != null) put(stringKey, normalized)
+    }
+}
+
+private fun normalizeValue(value: Any?, fieldPath: List<String>): Any? = when (value) {
+    null -> null
+    is String, is Boolean, is Number -> value
+    is List<*> -> value.map { normalizeValue(it, fieldPath) }
+    is Map<*, *> -> normalizeMap(value, fieldPath)
+    else -> throw OpenID4VPExceptions.InvalidData(
+        "Non-serializable value of type '${value::class.simpleName}' at ${fieldPath.joinToString(".")}",
+        CLASS_NAME
+    )
 }
 
 @Suppress("UNCHECKED_CAST")

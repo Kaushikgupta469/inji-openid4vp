@@ -100,7 +100,7 @@ class PresentationDefinition(
 	val name: String? = null,
 	val purpose: String? = null,
 	val format: Map<String, Map<String,List<String>>>? = null
-) : Validatable {
+) : Validatable, java.io.Serializable {
 
 	override fun validate() {
 		try {

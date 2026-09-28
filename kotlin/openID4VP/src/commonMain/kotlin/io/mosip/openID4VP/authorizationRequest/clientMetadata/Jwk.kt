@@ -101,7 +101,7 @@ data class Jwk(
     val kid: String? = null,
     val y: String? = null,
 
-    ) {
+    ) : java.io.Serializable {
 
     fun supports(algorithm: SignatureAlgorithm): Boolean {
         return when (algorithm) {

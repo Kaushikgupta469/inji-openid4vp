@@ -55,4 +55,4 @@ object FilterSerializer : KSerializer<Filter> {
 }
 
 @Serializable(with = FilterSerializer::class)
-class Filter(val type: String, val pattern: String)
+class Filter(val type: String, val pattern: String) : java.io.Serializable

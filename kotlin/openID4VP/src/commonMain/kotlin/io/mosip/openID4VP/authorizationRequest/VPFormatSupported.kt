@@ -3,7 +3,7 @@ package io.mosip.openID4VP.authorizationRequest
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.mosip.openID4VP.constants.ProofType
 
-sealed interface VPFormatSupported {
+sealed interface VPFormatSupported : java.io.Serializable {
     fun toAlgValuesSupported(): List<String>?
 }
 

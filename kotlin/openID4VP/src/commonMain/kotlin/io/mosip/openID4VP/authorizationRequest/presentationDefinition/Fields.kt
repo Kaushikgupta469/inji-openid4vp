@@ -100,7 +100,7 @@ class Fields(
 	val name: String? = null,
 	val filter: Filter? = null,
 	val optional: Boolean? = null
-) {
+) : java.io.Serializable {
 	fun validate() {
 		try {
 			val pathPrefixes = listOf("$.", "$[")

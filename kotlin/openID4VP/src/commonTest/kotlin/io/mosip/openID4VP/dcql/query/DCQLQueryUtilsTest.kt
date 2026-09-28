@@ -197,13 +197,44 @@ class `DCQLQueryUtilsTest` {
     }
 
     @Test
-    fun `requires meta on each credential query`() {
+    fun `defaults meta to empty map when absent`() {
         val request = requestWithCredential(mapOf("id" to "cred1", "format" to "vc+sd-jwt"))
 
-        val exception = assertFailsWith<OpenID4VPExceptions.MissingInput> {
+        val query = assertIs<DCQLQuery>(parseAndValidateDcqlQuery(request)[DCQL_QUERY.value])
+        assertTrue(query.credentials.single().meta.isEmpty())
+    }
+
+    @Test
+    fun `rejects non-serializable value in meta`() {
+        val request = requestWithCredential(
+            mapOf(
+                "id" to "cred1",
+                "format" to "vc+sd-jwt",
+                "meta" to mapOf("key" to object {})
+            )
+        )
+
+        val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
             parseAndValidateDcqlQuery(request)
         }
-        assertEquals("Missing Input: credential_query->meta param is required", exception.message)
+        assertTrue(exception.message!!.contains("Non-serializable value"))
+    }
+
+    @Test
+    fun `rejects non-serializable value in path`() {
+        val request = requestWithCredential(
+            mapOf(
+                "id" to "cred1",
+                "format" to "vc+sd-jwt",
+                "meta" to emptyMap<String, Any>(),
+                "claims" to listOf(mapOf("path" to listOf(object {})))
+            )
+        )
+
+        val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
+            parseAndValidateDcqlQuery(request)
+        }
+        assertTrue(exception.message!!.contains("Non-serializable value"))
     }
 
     @Test

@@ -15,7 +15,7 @@ open class AuthorizationRequest(
     val nonce: String,
     val walletNonce: String?,
     val state: String?,
-) {
+) : java.io.Serializable {
 
     companion object {
 

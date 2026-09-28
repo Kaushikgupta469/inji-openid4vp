@@ -124,7 +124,7 @@ class ClientMetadataDraft23(
 	@SerialName("authorization_encrypted_response_alg") val authorizationEncryptedResponseAlg: String? = null,
 	@SerialName("authorization_encrypted_response_enc") val authorizationEncryptedResponseEnc: String? = null,
 	@SerialName("jwks") val jwks: Jwks? = null,
-) : Validatable {
+) : Validatable, java.io.Serializable {
 	override fun validate() {
 		if (vpFormats.isEmpty()) {
 			throw OpenID4VPExceptions.InvalidInput(
