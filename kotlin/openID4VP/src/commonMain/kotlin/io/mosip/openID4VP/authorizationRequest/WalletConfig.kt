@@ -16,7 +16,7 @@ data class WalletConfig @JvmOverloads constructor(
     val isPresentationDefinitionUriSupported: Boolean = true,
     val trustedVerifiers: List<Verifier> = emptyList(),
     val validateTrustedVerifier: Boolean = true
-) {
+) : java.io.Serializable {
     @Suppress("UNCHECKED_CAST")
     fun toWalletMetadata(
         specVersion: SpecVersion,

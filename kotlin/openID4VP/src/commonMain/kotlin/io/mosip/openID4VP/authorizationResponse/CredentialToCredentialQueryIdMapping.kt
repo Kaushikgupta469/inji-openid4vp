@@ -6,6 +6,6 @@ internal class CredentialToCredentialQueryIdMapping(
     val format: FormatType,
     val credential: Any,
     val credentialQueryId: String
-) {
+) : java.io.Serializable {
     var identifier: String? = null
 }

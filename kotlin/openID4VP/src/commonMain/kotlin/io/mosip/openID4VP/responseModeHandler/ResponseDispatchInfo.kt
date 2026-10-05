@@ -12,10 +12,10 @@ data class ResponseDispatchInfo(
     val clientId: String,
     val responseUrl: String,
     val responseEncryptionSpecification: ResponseEncryptionSpecification? = null
-)
+) : java.io.Serializable
 
 data class ResponseEncryptionSpecification(
     val keyEncryptionAlg: EncryptionAlgorithm,
     val contentEncryptionAlg: EncryptionMethod,
     val verifierPublicKey: Jwk
-)
+) : java.io.Serializable

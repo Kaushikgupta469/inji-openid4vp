@@ -8,4 +8,4 @@ data class Verifier @JvmOverloads constructor(
     val jwksUri: String? = null,
     val allowUnsignedRequest: Boolean = false,
     val specVersion: SpecVersion = SpecVersion.V1
-)
+) : java.io.Serializable

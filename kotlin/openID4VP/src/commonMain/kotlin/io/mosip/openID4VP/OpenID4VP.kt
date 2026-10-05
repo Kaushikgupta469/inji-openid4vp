@@ -14,7 +14,7 @@ import io.mosip.openID4VP.wallet.Credential
 class OpenID4VP @JvmOverloads constructor(
     private val traceabilityId: String,
     private val walletConfig: WalletConfig = WalletConfig()
-) {
+) : java.io.Serializable {
     private var authorizationResponseHandler = AuthorizationResponseHandler(walletConfig = walletConfig)
     private var responseDispatchInfo: ResponseDispatchInfo? = null
     private var walletNonce: String = generateNonce()

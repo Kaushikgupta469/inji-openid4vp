@@ -35,7 +35,7 @@ private val className = AuthorizationResponseHandler::class.java.simpleName
 
 internal class AuthorizationResponseHandler(
     private val walletConfig: WalletConfig
-) {
+) : java.io.Serializable {
     private lateinit var unsignedVPTokenResults: Map<FormatType, Pair<Map<String, Any>, List<UnsignedVPToken>>>
     private lateinit var walletNonce: String
     internal lateinit var formatToCredentialInputDescriptorMapping: Map<FormatType, List<CredentialInputDescriptorMapping>>
