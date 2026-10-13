@@ -253,7 +253,7 @@ internal class DcqlEvaluator {
                 continue
             }
 
-            if (claimQuery.values != null && !matchesExpectedValues(resolved, claimQuery.values)) {
+            if (claimQuery.values != null && !matchesExpectedValues(resolved, claimQuery.values, pathHasWildcard = claimQuery.path.any { it == null })) {
                 failedClaims.add(
                     ClaimFailure(
                         claimQuery,
@@ -269,21 +269,27 @@ internal class DcqlEvaluator {
         return CheckClaimsResult(matchingClaims, failedClaims)
     }
 
-    private fun matchesExpectedValues(claimValue: Any, expectedValues: List<ClaimValue>): Boolean {
-        return expectedValues.any { expected ->
-            when (expected) {
-                is ClaimValue.StringValue -> (claimValue as? String) == expected.value
-                is ClaimValue.LongValue -> {
-                    when (claimValue) {
-                        is Int -> claimValue.toLong() == expected.value
-                        is Long -> claimValue == expected.value
-                        is Double -> claimValue.toLong() == expected.value
-                        is Number -> claimValue.toLong() == expected.value
-                        else -> false
-                    }
-                }
+    private fun matchesExpectedValues(claimValue: Any, expectedValues: List<ClaimValue>, pathHasWildcard: Boolean): Boolean {
+        val selectedValues: List<Any> =
+            if (pathHasWildcard && claimValue is List<*>) claimValue.filterNotNull()
+            else listOf(claimValue)
+        if (selectedValues.isEmpty()) return false
 
-                is ClaimValue.BoolValue -> (claimValue as? Boolean) == expected.value
+        return selectedValues.any { selectedValue ->
+            expectedValues.any { expected ->
+                when (expected) {
+                    is ClaimValue.StringValue -> (selectedValue as? String) == expected.value
+                    is ClaimValue.LongValue -> {
+                        when (selectedValue) {
+                            is Int -> selectedValue.toLong() == expected.value
+                            is Long -> selectedValue == expected.value
+                            is Double -> selectedValue.toLong() == expected.value
+                            is Number -> selectedValue.toLong() == expected.value
+                            else -> false
+                        }
+                    }
+                    is ClaimValue.BoolValue -> (selectedValue as? Boolean) == expected.value
+                }
             }
         }
     }

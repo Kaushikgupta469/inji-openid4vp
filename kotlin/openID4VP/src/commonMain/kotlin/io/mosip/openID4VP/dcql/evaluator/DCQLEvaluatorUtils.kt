@@ -163,52 +163,65 @@ internal fun convertToProcessedCredentials(
     return processedCredentials
 }
 
-@Suppress("UNCHECKED_CAST")
 internal fun resolveClaimsPathPointer(path: List<Any?>, claims: Any?): Any? {
-    var selectedElement: Any? = claims
+    var selection: List<Any?> = listOf(claims)
+    var pathHasWildcard = false
 
-    for ((i, pathPointer) in path.withIndex()) {
+    for (pathPointer in path) {
         when {
             pathPointer is String -> {
-                when {
-                    selectedElement is Map<*, *> -> {
-                        selectedElement = selectedElement[pathPointer]
+                val next = mutableListOf<Any?>()
+                for (element in selection) {
+                    val selectedObject = element as? Map<*, *>
+                        ?: throw OpenID4VPExceptions.InvalidData(
+                            "currently selected element(s) is not an object", CLASS_NAME
+                        )
+                    if (selectedObject.containsKey(pathPointer)) {
+                        next.add(selectedObject[pathPointer])
                     }
-                    i > 0 && isNullPathPointer(path[i - 1]) -> {
-                        val selectedArray = selectedElement as? List<Map<String, Any>>
-                            ?: throw OpenID4VPExceptions.InvalidData(
-                                "currently selected element(s) is not an object", CLASS_NAME
-                            )
-                        val selectedValues = selectedArray.mapNotNull { it[pathPointer] }
-                        selectedElement = selectedValues.ifEmpty { null }
-                    }
-                    else -> throw OpenID4VPExceptions.InvalidData(
-                        "currently selected element(s) is not an object", CLASS_NAME
-                    )
                 }
+                selection = next
             }
             pathPointer is Number -> {
                 val index = pathPointer.toInt()
-                val selectedArray = selectedElement as? List<*>
-                    ?: throw OpenID4VPExceptions.InvalidData(
-                        "currently selected element(s) is not an array", CLASS_NAME
-                    )
-                selectedElement = if (index < 0 || index >= selectedArray.size) null
-                else selectedArray[index]
+                val next = mutableListOf<Any?>()
+                for (element in selection) {
+                    val selectedArray = element as? List<*>
+                        ?: throw OpenID4VPExceptions.InvalidData(
+                            "currently selected element(s) is not an array", CLASS_NAME
+                        )
+                    if (index >= 0 && index < selectedArray.size) {
+                        next.add(selectedArray[index])
+                    }
+                }
+                selection = next
             }
             isNullPathPointer(pathPointer) -> {
-                if (selectedElement !is List<*>) {
-                    throw OpenID4VPExceptions.InvalidData(
-                        "currently selected element(s) is not an array", CLASS_NAME
-                    )
+                pathHasWildcard = true
+                val next = mutableListOf<Any?>()
+                for (element in selection) {
+                    val selectedArray = element as? List<*>
+                        ?: throw OpenID4VPExceptions.InvalidData(
+                            "currently selected element(s) is not an array", CLASS_NAME
+                        )
+                    next.addAll(selectedArray)
                 }
+                selection = next
             }
             else -> throw OpenID4VPExceptions.InvalidData(
                 "Unexpected path pointer component", CLASS_NAME
             )
         }
+
+        if (selection.isEmpty()) {
+            return null
+        }
     }
-    return selectedElement
+
+    return when {
+        pathHasWildcard -> selection
+        else -> selection.singleOrNull()
+    }
 }
 
 private fun isNullPathPointer(value: Any?): Boolean {

@@ -447,6 +447,38 @@ class DCQLEvaluatorUtilsTest {
     }
 
     @Test
+    fun `resolveClaimsPathPointer returns array elements when path ends with null`() {
+        val claims = mapOf("nationalities" to listOf("DE", "FR"))
+
+        assertEquals(
+            listOf("DE", "FR"),
+            resolveClaimsPathPointer(listOf("nationalities", null), claims)
+        )
+    }
+
+    @Test
+    fun `resolveClaimsPathPointer fans out across nested null pointers`() {
+        val claims = mapOf(
+            "degrees" to listOf(
+                mapOf(
+                    "subjects" to listOf(
+                        mapOf("name" to "Math"),
+                        mapOf("name" to "Physics")
+                    )
+                ),
+                mapOf(
+                    "subjects" to listOf(mapOf("name" to "Chemistry"))
+                )
+            )
+        )
+
+        assertEquals(
+            listOf("Math", "Physics", "Chemistry"),
+            resolveClaimsPathPointer(listOf("degrees", null, "subjects", null, "name"), claims)
+        )
+    }
+
+    @Test
     fun `resolveClaimsPathPointer returns null when a fanned-out claim is absent everywhere`() {
         val claims = mapOf("degrees" to listOf(mapOf("type" to "B.Tech")))
 
