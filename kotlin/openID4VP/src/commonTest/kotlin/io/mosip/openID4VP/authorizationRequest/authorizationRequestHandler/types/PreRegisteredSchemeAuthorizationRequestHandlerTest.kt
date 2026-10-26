@@ -18,7 +18,10 @@ import io.mosip.openID4VP.constants.VPFormatType
 import io.mosip.openID4VP.exceptions.OpenID4VPExceptions
 import io.mosip.openID4VP.testData.*
 import io.mosip.openID4VP.testData.JWSUtil.Companion.buildTestJwk
+import io.mosip.openID4VP.testData.JWSUtil.Companion.generateP256PublicKey
+import io.mosip.openID4VP.testData.JWSUtil.Companion.toP256Jwk
 import org.junit.jupiter.api.Test
+import java.security.interfaces.ECPublicKey
 import kotlin.test.*
 
 class PreRegisteredSchemeAuthorizationRequestHandlerTest {
@@ -286,6 +289,94 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
         } catch (e: Throwable) {
             fail("Expected no exception, but got: ${e.message}")
         }
+    }
+
+    private fun handlerFor(clientId: String) = PreRegisteredSchemeAuthorizationRequestHandler(
+        clientId = clientId,
+        specVersion = SpecVersion.DRAFT_23,
+        authorizationRequestParameters = authorizationRequestParameters,
+        walletConfig = walletConfig,
+        setResponseDispatchInfo = setResponseDispatchInfo,
+        walletNonce = walletNonce
+    )
+
+    @Test
+    fun `should extract the P-256 key for ES256 when kid is present`() {
+        val p256PublicKey = generateP256PublicKey()
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(p256PublicKey.toP256Jwk(kid = "ec-kid")))
+
+        val publicKey = handlerFor("test-client").extractPublicKey(SignatureAlgorithm.ES256, mapOf("kid" to "ec-kid"))
+
+        assertIs<ECPublicKey>(publicKey)
+        assertEquals(p256PublicKey.w, publicKey.w)
+    }
+
+    @Test
+    fun `should select the key by the signing algorithm when kid is absent`() {
+        val p256PublicKey = generateP256PublicKey()
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(buildTestJwk(kid = "ed-kid"), p256PublicKey.toP256Jwk(kid = "ec-kid")))
+        val handler = handlerFor("test-client")
+
+        val es256Key = handler.extractPublicKey(SignatureAlgorithm.ES256, emptyMap())
+        val eddsaKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, emptyMap())
+
+        assertIs<ECPublicKey>(es256Key)
+        assertEquals(p256PublicKey.w, es256Key.w)
+        assertFalse(eddsaKey is ECPublicKey)
+    }
+
+    @Test
+    fun `should throw error when no key in the jwks supports the signing algorithm`() {
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(buildTestJwk(kid = "ed-kid")))
+
+        val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
+            handlerFor("test-client").extractPublicKey(SignatureAlgorithm.ES256, emptyMap())
+        }
+
+        assertTrue(ex.message.contains("No public key found for algorithm: ES256 with signature usage"))
+    }
+
+    @Test
+    fun `should throw error when an EC key has no y coordinate`() {
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        val withoutY = generateP256PublicKey().toP256Jwk(kid = "ec-kid").copy(y = null)
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(withoutY))
+
+        val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
+            handlerFor("test-client").extractPublicKey(SignatureAlgorithm.ES256, mapOf("kid" to "ec-kid"))
+        }
+
+        assertTrue(ex.message.contains("y is required for an EC key"))
+    }
+
+    @Test
+    fun `should throw error when an EC key is not a point on the P-256 curve`() {
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        val validJwk = generateP256PublicKey().toP256Jwk(kid = null)
+        val notOnCurve = validJwk.copy(y = generateP256PublicKey().toP256Jwk().y)
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(notOnCurve))
+
+        val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
+            handlerFor("test-client").extractPublicKey(SignatureAlgorithm.ES256, emptyMap())
+        }
+
+        assertTrue(ex.message.contains("Public key extraction failed"))
+    }
+
+    @Test
+    fun `should throw error when an EC key is on an unsupported curve`() {
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        val p384Jwk = buildTestJwk(kid = "ec-kid", alg = "ES384", kty = "EC", crv = "P-384", y = "AAAA")
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(p384Jwk))
+
+        val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
+            handlerFor("test-client").extractPublicKey(SignatureAlgorithm.ES256, mapOf("kid" to "ec-kid"))
+        }
+
+        assertTrue(ex.message.contains("Public key extraction failed - Curve - P-384 is not supported. Supported: P-256"))
     }
 
     @Test

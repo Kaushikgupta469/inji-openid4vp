@@ -17,6 +17,7 @@ import io.mosip.openID4VP.constants.FormatType
 import io.mosip.openID4VP.dcql.query.CredentialQuery
 import io.mosip.openID4VP.dcql.query.DCQLQuery
 import io.mosip.openID4VP.common.OpenID4VPErrorCodes.INVALID_REQUEST
+import io.mosip.openID4VP.common.OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT
 import io.mosip.openID4VP.common.OpenID4VPErrorCodes.INVALID_REQUEST_URI_METHOD
 import io.mosip.openID4VP.constants.ClientIdPrefix
 import io.mosip.openID4VP.constants.HttpMethod.POST
@@ -439,6 +440,58 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     }
 
     @Test
+    fun `should verify a signed request by value with ES256 when the wallet lists it`() {
+        val authorizationRequestParamsMap = createAuthorizationRequest(
+            authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
+            clientIdOfPreRegistered + requestParams,
+            isSigned = true
+        ) as MutableMap<String, Any>
+        every { JWSHandler.verify(any(), any(), any()) } returns Unit
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "ES256", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns mutableMapOf(
+            CLIENT_ID.value to "mock-client",
+        )
+        val mockHandler = createMockHandler(
+            authorizationRequestParameters = authorizationRequestParamsMap,
+            walletConfig = walletConfig.copy(
+                requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
+            ),
+            extractPublicKey = { _, _ -> mockk<PublicKey>() }
+        )
+
+        assertDoesNotThrow {
+            mockHandler.fetchAuthorizationRequest()
+        }
+
+        verify { JWSHandler.verify(any(), any(), SignatureAlgorithm.ES256) }
+    }
+
+    @Test
+    fun `should reject a signed request by value with ES256 when the wallet lists only EdDSA`() {
+        val authorizationRequestParamsMap = createAuthorizationRequest(
+            authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
+            clientIdOfPreRegistered + requestParams,
+            isSigned = true
+        ) as MutableMap<String, Any>
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "ES256", "typ" to "oauth-authz-req+jwt")
+        val mockHandler = createMockHandler(
+            authorizationRequestParameters = authorizationRequestParamsMap,
+            walletConfig = walletConfig.copy(requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.EdDSA)),
+            extractPublicKey = { _, _ -> throw AssertionError("the key must not be resolved for an alg the wallet does not list") }
+        )
+
+        val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
+            mockHandler.fetchAuthorizationRequest()
+        }
+
+        assertOpenId4VPException(
+            exception,
+            "Request URI response validation failed - request_object_signing_alg is not supported by wallet",
+            INVALID_REQUEST_OBJECT
+        )
+    }
+
+    @Test
     fun `should reject a signed request by value with an algorithm the prefix does not verify, even when the wallet lists it`() {
         val authorizationRequestParamsMap = createAuthorizationRequest(
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
@@ -451,7 +504,8 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             walletConfig = WalletConfig(
                 requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
             ),
-            extractPublicKey = { _, _ -> throw AssertionError("the key must not be resolved for an unsupported alg") }
+            extractPublicKey = { _, _ -> throw AssertionError("the key must not be resolved for an unsupported alg") },
+            supportedSignatureAlgorithms = listOf(SignatureAlgorithm.EdDSA)
         )
 
         val exception = assertFailsWith<OpenID4VPExceptions.VerificationFailure> {
@@ -491,6 +545,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
                 requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
             ),
             extractPublicKey = { _, _ -> mockk<PublicKey>() },
+            supportedSignatureAlgorithms = listOf(SignatureAlgorithm.EdDSA),
             walletNonce = walletNonce,
             getWalletMetadata = { walletConfigForMetadata = it; mapOf() }
         )
@@ -971,6 +1026,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         isUnsignedRequestSupported: Boolean = true,
         clientIdScheme: String = "PRE_REGISTERED",
         extractPublicKey: ((SignatureAlgorithm, Map<String, Any>) -> PublicKey)? = null,
+        supportedSignatureAlgorithms: List<SignatureAlgorithm>? = null,
         confirmSpecVersionIdentifiedFromRequest: Boolean = true,
         getWalletMetadata: (WalletConfig) -> Map<String, Any> = { mapOf() }
     ): ClientIdPrefixBasedAuthorizationRequestHandler {
@@ -986,6 +1042,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             override fun isUnsignedRequestSupported() = isUnsignedRequestSupported
             override fun clientIdPrefix() = clientIdScheme
             override fun confirmSpecVersionIdentifiedFromRequest() = confirmSpecVersionIdentifiedFromRequest
+            override fun supportedSignatureAlgorithms() = supportedSignatureAlgorithms ?: super.supportedSignatureAlgorithms()
             override fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey =
                 extractPublicKey?.invoke(algorithm, jwsHeader) ?: throw NotImplementedError()
             override fun getWalletMetadata(walletConfig: WalletConfig): Map<String, Any> = getWalletMetadata(walletConfig)

@@ -82,7 +82,8 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
     open fun confirmSpecVersionIdentifiedFromRequest(): Boolean = true
 
     /// Signature algorithms this prefix verifies signed Authorization Requests with.
-    open fun supportedSignatureAlgorithms(): List<SignatureAlgorithm> = listOf(SignatureAlgorithm.EdDSA)
+    open fun supportedSignatureAlgorithms(): List<SignatureAlgorithm> =
+        listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
 
     private val prefixWalletConfig: WalletConfig by lazy {
         walletConfig.copy(
@@ -374,12 +375,12 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
                     OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT
                 )
 
-            validateAuthorizationSignatureAlgorithm(algString)
-
             val algorithm = SignatureAlgorithm.valueOf(algString)
             require(algorithm in supportedSignatureAlgorithms()) {
                 "Signing algorithm '$algString' is not supported for client_id_prefix ${clientIdPrefix()}"
             }
+
+            validateAuthorizationSignatureAlgorithm(algorithm)
 
             val publicKey = extractPublicKey(algorithm = algorithm, jwsHeader = header)
 
@@ -417,11 +418,8 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
         }
     }
 
-    private fun validateAuthorizationSignatureAlgorithm(algorithm: String) {
-        if (shouldValidateWithWalletMetadata && !prefixWalletConfig.requestObjectSigningAlgValuesSupported!!.contains(
-                SignatureAlgorithm.fromValue(algorithm)
-            )
-        ) throw OpenID4VPExceptions.InvalidData(
+    private fun validateAuthorizationSignatureAlgorithm(algorithm: SignatureAlgorithm) {
+        if (walletConfig.requestObjectSigningAlgValuesSupported?.contains(algorithm) != true) throw OpenID4VPExceptions.InvalidData(
             "request_object_signing_alg is not supported by wallet",
             className
         )

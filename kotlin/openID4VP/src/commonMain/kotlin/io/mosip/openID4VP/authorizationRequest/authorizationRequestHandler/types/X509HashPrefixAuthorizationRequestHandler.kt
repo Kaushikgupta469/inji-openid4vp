@@ -78,17 +78,11 @@ class X509HashPrefixAuthorizationRequestHandler(
         return ClientIdPrefix.X509_HASH.value
     }
 
-    // ES256 as HAIP 1.0 requires, EdDSA for Verifiers with Ed25519 keys
-    override fun supportedSignatureAlgorithms(): List<SignatureAlgorithm> {
-        return listOf(SignatureAlgorithm.ES256, SignatureAlgorithm.EdDSA)
-    }
-
     override fun confirmSpecVersionIdentifiedFromRequest(): Boolean {
         return specVersion == SpecVersion.V1
     }
 
     override fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey {
-        validateAlgorithmAllowed(algorithm)
         val certificateChainBytes = extractCertificateChainBytes(jwsHeader)
 
         if (encodeToBase64UrlWithoutPadding(generateHash(certificateChainBytes.first())) != certificateHash) {
@@ -170,13 +164,6 @@ class X509HashPrefixAuthorizationRequestHandler(
         val keyUsage = certificate.keyUsage ?: return
         if (!keyUsage[DIGITAL_SIGNATURE_KEY_USAGE]) {
             throw invalidRequestObject("Key usage of the leaf certificate in x5c does not allow digitalSignature")
-        }
-    }
-
-    // Also needed for requests by value: the base class checks the algorithm only after a request_uri POST
-    private fun validateAlgorithmAllowed(algorithm: SignatureAlgorithm) {
-        if (walletConfig.requestObjectSigningAlgValuesSupported?.contains(algorithm) != true) {
-            throw invalidRequestObject("request_object_signing_alg is not supported by wallet")
         }
     }
 

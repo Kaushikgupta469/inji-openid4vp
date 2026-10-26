@@ -7,7 +7,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters
 import org.bouncycastle.crypto.signers.Ed25519Signer
+import java.math.BigInteger
 import java.nio.charset.StandardCharsets
+import java.security.KeyPairGenerator
+import java.security.interfaces.ECPublicKey
+import java.security.spec.ECGenParameterSpec
 import java.util.Base64
 
 class JWSUtil {
@@ -65,6 +69,29 @@ class JWSUtil {
                 y = y,
                 kid = kid
             )
+        }
+
+        fun generateP256PublicKey(): ECPublicKey {
+            val keyPairGenerator = KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }
+            return keyPairGenerator.generateKeyPair().public as ECPublicKey
+        }
+
+        fun ECPublicKey.toP256Jwk(kid: String? = "test-ec-kid", use: String = "sig"): Jwk {
+            return buildTestJwk(
+                kid = kid,
+                alg = "ES256",
+                kty = "EC",
+                use = use,
+                crv = "P-256",
+                x = w.affineX.toBase64Url(),
+                y = w.affineY.toBase64Url()
+            )
+        }
+
+        fun BigInteger.toBase64Url(): String {
+            val bytes = toByteArray().dropWhile { it == 0.toByte() }.toByteArray()
+            val padded = ByteArray(32 - bytes.size) + bytes
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(padded)
         }
 
         fun createJWS(

@@ -15,11 +15,15 @@ import io.mosip.openID4VP.jwt.jws.JWSHandler
 import io.mosip.openID4VP.testData.assertWalletConfigAndMetadata
 import io.mosip.openID4VP.testData.clientMetadataString
 import io.mosip.openID4VP.testData.didUrl
+import io.mosip.openID4VP.testData.JWSUtil.Companion.generateP256PublicKey
+import io.mosip.openID4VP.testData.JWSUtil.Companion.toBase64Url
 import io.mosip.openID4VP.testData.jws
 import io.mosip.openID4VP.testData.presentationDefinitionString
 import io.mosip.vercred.vcverifier.keyResolver.types.did.DidPublicKeyResolver
 import org.junit.jupiter.api.Test
 import java.security.PublicKey
+import java.security.interfaces.ECPublicKey
+import java.util.Base64
 import kotlin.test.*
 
 class DidSchemeAuthorizationRequestHandlerTest {
@@ -87,6 +91,26 @@ class DidSchemeAuthorizationRequestHandlerTest {
             handler.getWalletMetadata(invalidWalletConfig)
         }
         assertTrue(exception.message?.contains("request_object_signing_alg_values_supported is not present") == true)
+    }
+
+    @Test
+    fun `extractPublicKey should resolve the P-256 key of a did jwk for ES256`() {
+        val p256PublicKey = generateP256PublicKey()
+        val jwk = "{\"kty\":\"EC\",\"crv\":\"P-256\",\"x\":\"${p256PublicKey.w.affineX.toBase64Url()}\",\"y\":\"${p256PublicKey.w.affineY.toBase64Url()}\"}"
+        val did = "did:jwk:" + Base64.getUrlEncoder().withoutPadding().encodeToString(jwk.toByteArray())
+        val handler = DecentralizedIdentifierPrefixAuthorizationRequestHandler(
+            clientId = did,
+            specVersion = SpecVersion.DRAFT_23,
+            authorizationRequestParameters = authorizationRequestParameters,
+            walletConfig = walletConfig,
+            setResponseDispatchInfo = setResponseDispatchInfo,
+            walletNonce = walletNonce
+        )
+
+        val resolvedKey = handler.extractPublicKey(SignatureAlgorithm.ES256, mapOf("kid" to "$did#0"))
+
+        assertIs<ECPublicKey>(resolvedKey)
+        assertEquals(p256PublicKey.w, resolvedKey.w)
     }
 
     @Test
