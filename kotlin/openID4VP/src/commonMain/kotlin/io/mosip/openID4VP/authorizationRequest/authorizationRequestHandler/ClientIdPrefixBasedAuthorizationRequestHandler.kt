@@ -81,6 +81,16 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
 
     open fun confirmSpecVersionIdentifiedFromRequest(): Boolean = true
 
+    /// Signature algorithms this prefix verifies signed Authorization Requests with.
+    open fun supportedSignatureAlgorithms(): List<SignatureAlgorithm> = listOf(SignatureAlgorithm.EdDSA)
+
+    private val prefixWalletConfig: WalletConfig by lazy {
+        walletConfig.copy(
+            requestObjectSigningAlgValuesSupported = walletConfig.requestObjectSigningAlgValuesSupported
+                ?.filter { it in supportedSignatureAlgorithms() }
+        )
+    }
+
     /// Validates the authenticity of the client identifier.
     /// For example, ensures that a client claiming to use a specific prefix is actually authorized or trusted.
     open fun validateClientAuthenticity() {}
@@ -204,7 +214,7 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
             )
             isClientIdPrefixSupported(walletConfig)
             try {
-                val processedWalletMetadata = getWalletMetadata(walletConfig)
+                val processedWalletMetadata = getWalletMetadata(prefixWalletConfig)
                 body = body.plus(
                     mapOf(
                         "wallet_metadata" to encodeToJsonString(
@@ -367,13 +377,14 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
             validateAuthorizationSignatureAlgorithm(algString)
 
             val algorithm = SignatureAlgorithm.valueOf(algString)
+            require(algorithm in supportedSignatureAlgorithms()) {
+                "Signing algorithm '$algString' is not supported for client_id_prefix ${clientIdPrefix()}"
+            }
 
-            val kid = header["kid"] as? String
-
-            val publicKey = extractPublicKey(algorithm = algorithm, kid = kid)
+            val publicKey = extractPublicKey(algorithm = algorithm, jwsHeader = header)
 
             try {
-                JWSHandler.verify(jws, publicKey)
+                JWSHandler.verify(jws, publicKey, algorithm)
             } catch (e: Exception) {
                 throw OpenID4VPExceptions.VerificationFailure(
                     "JWS signature verification failed: ${e.message}",
@@ -394,7 +405,8 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
         }
     }
 
-    abstract fun extractPublicKey(algorithm: SignatureAlgorithm, kid: String?): PublicKey
+    /// Resolves the public key that verifies the signed Authorization Request from its JWS header.
+    abstract fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey
 
     private fun isValidContentType(headers: Map<String, List<String>>): Boolean {
         val contentTypeValues: List<String> = headers.entries
@@ -406,7 +418,7 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
     }
 
     private fun validateAuthorizationSignatureAlgorithm(algorithm: String) {
-        if (shouldValidateWithWalletMetadata && !walletConfig.requestObjectSigningAlgValuesSupported!!.contains(
+        if (shouldValidateWithWalletMetadata && !prefixWalletConfig.requestObjectSigningAlgValuesSupported!!.contains(
                 SignatureAlgorithm.fromValue(algorithm)
             )
         ) throw OpenID4VPExceptions.InvalidData(

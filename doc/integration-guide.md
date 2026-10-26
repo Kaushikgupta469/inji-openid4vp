@@ -212,14 +212,15 @@ val openID4VP = OpenID4VP(
 | Parameter                                   | Type                     | Default                                                    | Purpose                                                       |
 |---------------------------------------------|--------------------------|------------------------------------------------------------|---------------------------------------------------------------|
 | `vpFormatsSupported`                        | `Map<VPFormatType, VPFormatSupported>` | `mapOf(LDP_VC -> LdpVpFormatSupported(), MSO_MDOC -> MsoMdocVpFormatSupported(), DC_SD_JWT -> SdJwtVpFormatSupported())` | Verifiable Presentation formats your wallet supports          |
-| `clientIdPrefixesSupported`                 | `List<ClientIdPrefix>`       | `listOf(ClientIdPrefix.PRE_REGISTERED, ClientIdPrefix.REDIRECT_URI, ClientIdPrefix.DECENTRALIZED_IDENTIFIER)` | Client ID prefix types your wallet can authenticate           |
-| `requestObjectSigningAlgValuesSupported`    | `List<SignatureAlgorithm>?`  | `listOf(SignatureAlgorithm.ED_DSA)`                                         | Signature algorithms accepted when validating signed requests |
+| `clientIdPrefixesSupported`                 | `List<ClientIdPrefix>`       | `listOf(ClientIdPrefix.PRE_REGISTERED, ClientIdPrefix.REDIRECT_URI, ClientIdPrefix.DECENTRALIZED_IDENTIFIER)` | Client ID prefix types your wallet can authenticate (`PRE_REGISTERED`, `REDIRECT_URI`, `DECENTRALIZED_IDENTIFIER`, `X509_HASH`) |
+| `requestObjectSigningAlgValuesSupported`    | `List<SignatureAlgorithm>?`  | `listOf(SignatureAlgorithm.ED_DSA)`                                         | Signature algorithms accepted when validating signed requests. `x509_hash` verifies `ES256` and `EdDSA`; the other prefixes verify `EdDSA` only. Add `ES256` when enabling `x509_hash`, as HAIP Verifiers sign with it |
 | `authorizationEncryptionAlgValuesSupported` | `List<EncryptionAlgorithm>?` | `listOf(EncryptionAlgorithm.ECDH_ES)`                                       | Supported key management algorithms for encryption            |
 | `authorizationEncryptionEncValuesSupported` | `List<EncryptionMethod>?`    | `listOf(EncryptionMethod.A256_GCM)`                                         | Supported content encryption methods                          |
 | `responseTypesSupported`                    | `List<ResponseType>`         | `listOf(ResponseType.VP_TOKEN)`                                             | OpenID4VP response types your wallet can generate             |
 | `isPresentationDefinitionUriSupported`      | `Boolean`                   | `true`                                                     | Whether wallet can resolve presentation definitions from URIs |
 | `trustedVerifiers`                          | `List<Verifier>`             | `emptyList()`                                              | Pre-configured trusted verifiers                              |
 | `validateTrustedVerifier`                   | `Boolean`                   | `true`                                                     | Whether to validate pre-registered verifiers                  |
+| `verifierTrustAnchors`                      | `List<String>`               | `emptyList()`                                              | CA certificates, each the standard base64 DER encoding used in `x5c`, that the certificate chain of an `x509_hash` Verifier must validate to. With none configured, `x509_hash` requests are rejected |
 
 ### Configuring Trusted Verifiers
 
@@ -333,6 +334,7 @@ This method:
 **Client validation:**
 - For `pre-registered` clients: validates against `WalletConfig.trustedVerifiers`
 - Can be disabled by setting `WalletConfig.validateTrustedVerifier` to `false` in wallet config
+- For `x509_hash` clients: the `x5c` certificate chain must validate to one of `WalletConfig.verifierTrustAnchors` (signatures, validity periods and CA constraints; revocation is not checked), and the leaf certificate must not be self-signed. `validateTrustedVerifier` does not turn this off
 
 ```kotlin
 val authorizationRequest: AuthorizationRequest = openID4VP.authenticateVerifier(

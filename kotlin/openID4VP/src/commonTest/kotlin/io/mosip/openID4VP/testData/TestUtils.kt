@@ -202,7 +202,7 @@ fun assertWalletConfigAndMetadata(
     }
     if (walletMetadata.containsKey("client_id_schemes_supported")) {
         assertEquals(
-            walletConfig.clientIdPrefixesSupported.map { ClientIdPrefix.toClientIdScheme(it) },
+            walletConfig.clientIdPrefixesSupported.mapNotNull { ClientIdPrefix.toClientIdScheme(it) },
             walletMetadata["client_id_schemes_supported"]
         )
     }

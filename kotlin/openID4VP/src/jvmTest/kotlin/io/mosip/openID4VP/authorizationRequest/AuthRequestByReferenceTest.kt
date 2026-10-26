@@ -436,7 +436,7 @@ class AuthRequestByReferenceTest {
 
         mockkObject(JWSHandler)
         every {
-            JWSHandler.verify(any(), any())
+            JWSHandler.verify(any(), any(), any())
         } throws RuntimeException("Invalid signature")
 
         val encodedAuthorizationRequest = createUrlEncodedData(

@@ -51,7 +51,8 @@ class DecentralizedIdentifierPrefixAuthorizationRequestHandler(
         }
     }
 
-    override fun extractPublicKey(algorithm: SignatureAlgorithm, kid: String?): PublicKey {
+    override fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey {
+        val kid = jwsHeader["kid"] as? String
         val didUrl = when (specVersion) {
             SpecVersion.DRAFT_23 -> clientId
             SpecVersion.V1 -> extractClientIdPartOnly(authorizationRequestParameters)

@@ -108,6 +108,10 @@ data class Jwk(
             SignatureAlgorithm.EdDSA ->
                 kty.equals("OKP", ignoreCase = true) &&
                         crv.equals("Ed25519", ignoreCase = true)
+
+            SignatureAlgorithm.ES256 ->
+                kty.equals("EC", ignoreCase = true) &&
+                        crv.equals("P-256", ignoreCase = true)
         }
     }
 }

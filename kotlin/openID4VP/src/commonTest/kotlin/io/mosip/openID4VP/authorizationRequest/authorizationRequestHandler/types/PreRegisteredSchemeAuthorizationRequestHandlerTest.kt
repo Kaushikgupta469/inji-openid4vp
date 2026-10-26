@@ -303,7 +303,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
             walletNonce = walletNonce
         )
 
-        val publicKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, testKid)
+        val publicKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, mapOf("kid" to testKid))
 
         assertNotNull(publicKey)
         assertEquals("Ed25519", publicKey.algorithm)
@@ -328,7 +328,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
         )
 
         val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
-            handler.extractPublicKey(SignatureAlgorithm.EdDSA, "non-existent")
+            handler.extractPublicKey(SignatureAlgorithm.EdDSA, mapOf("kid" to "non-existent"))
         }
 
         assertTrue(ex.message.contains("Public key extraction failed for kid"))
@@ -348,7 +348,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
         )
 
         val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
-            handler.extractPublicKey(SignatureAlgorithm.EdDSA, null)
+            handler.extractPublicKey(SignatureAlgorithm.EdDSA, emptyMap())
         }
 
         assertTrue(ex.message.contains("Public key extraction failed - Public key information not available in pre-registered data to verify the signed Authorization Request"))
@@ -369,7 +369,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
             walletNonce = walletNonce
         )
 
-        val publicKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, null)
+        val publicKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, emptyMap())
         assertNotNull(publicKey)
     }
 
@@ -391,7 +391,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
         )
 
         val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
-            handler.extractPublicKey(SignatureAlgorithm.EdDSA, null)
+            handler.extractPublicKey(SignatureAlgorithm.EdDSA, emptyMap())
         }
 
         assertTrue(ex.message.contains("Multiple ambiguous keys found for EdDSA with signature usage"))
@@ -414,7 +414,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
         )
 
         val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
-            handler.extractPublicKey(SignatureAlgorithm.EdDSA, null)
+            handler.extractPublicKey(SignatureAlgorithm.EdDSA, emptyMap())
         }
 
         assertTrue(ex.message.contains("No public key found for algorithm: EdDSA with signature usage"))
@@ -436,7 +436,7 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
         )
 
         val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
-            handler.extractPublicKey(SignatureAlgorithm.EdDSA, "test-kid")
+            handler.extractPublicKey(SignatureAlgorithm.EdDSA, mapOf("kid" to "test-kid"))
         }
         assertTrue(ex.message.contains("Public key extraction failed - Curve - XYZ is not supported. Supported: Ed25519"))
     }

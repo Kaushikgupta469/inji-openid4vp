@@ -2,11 +2,13 @@ package io.mosip.openID4VP.jwt.jws
 
 import io.mosip.openID4VP.common.convertJsonToMap
 import io.mosip.openID4VP.common.decodeFromBase64Url
+import io.mosip.openID4VP.constants.SignatureAlgorithm
 import io.mosip.openID4VP.exceptions.OpenID4VPExceptions
 import io.mosip.openID4VP.jwt.jws.JWSHandler.JwsPart.HEADER
 import io.mosip.openID4VP.jwt.jws.JWSHandler.JwsPart.PAYLOAD
 import io.mosip.openID4VP.jwt.jws.JWSHandler.JwsPart.SIGNATURE
 import io.mosip.vercred.vcverifier.signature.impl.ED25519SignatureVerifierImpl
+import io.mosip.vercred.vcverifier.signature.impl.ES256SignatureVerifierImpl
 import java.nio.charset.StandardCharsets
 import java.security.PublicKey
 import io.mosip.openID4VP.common.encodeToBase64Url
@@ -21,7 +23,8 @@ class JWSHandler {
     }
 
     companion object {
-        fun verify(jws: String, publicKey: PublicKey) {
+        // The JWS alg selects the verifier, so a key of another type is rejected
+        fun verify(jws: String, publicKey: PublicKey, algorithm: SignatureAlgorithm) {
             val verificationResult: Boolean
             try {
                 val parts = jws.split(".")
@@ -31,21 +34,16 @@ class JWSHandler {
 
                 val messageBytes = "$header.$payload".toByteArray(StandardCharsets.UTF_8)
 
-                verificationResult = when (publicKey.algorithm) {
-                    "Ed25519" -> {
-                        ED25519SignatureVerifierImpl().verify(
-                            publicKey = publicKey,
-                            signData = messageBytes,
-                            signature = signature,
-                            provider = null
-                        )
-                    }
-
-                    else -> throw OpenID4VPExceptions.VerificationFailure(
-                        "Unsupported public key type: ${publicKey.algorithm}",
-                        className
-                    )
+                val signatureVerifier = when (algorithm) {
+                    SignatureAlgorithm.EdDSA -> ED25519SignatureVerifierImpl()
+                    SignatureAlgorithm.ES256 -> ES256SignatureVerifierImpl()
                 }
+                verificationResult = signatureVerifier.verify(
+                    publicKey = publicKey,
+                    signData = messageBytes,
+                    signature = signature,
+                    provider = null
+                )
             } catch (ex: Exception) {
                 throw OpenID4VPExceptions.VerificationFailure(
                     "An unexpected exception occurred during verification: ${ex.message}",

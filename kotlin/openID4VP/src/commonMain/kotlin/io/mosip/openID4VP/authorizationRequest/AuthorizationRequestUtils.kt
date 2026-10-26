@@ -58,6 +58,14 @@ fun getAuthorizationRequestHandler(
                 setResponseDispatchInfo = setResponseDispatchInfo,
                 walletNonce = walletNonce
             )
+        ClientIdPrefix.X509_HASH.value -> X509HashPrefixAuthorizationRequestHandler(
+            clientId = clientId,
+            specVersion = specVersion,
+            authorizationRequestParameters = authorizationRequestParameters,
+            walletConfig = walletConfig,
+            setResponseDispatchInfo = setResponseDispatchInfo,
+            walletNonce = walletNonce
+        )
         else -> {
             PreRegisteredSchemeAuthorizationRequestHandler(
                 clientId = clientId,

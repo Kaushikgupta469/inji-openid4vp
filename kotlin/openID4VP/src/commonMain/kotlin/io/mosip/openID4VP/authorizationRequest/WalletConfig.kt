@@ -15,7 +15,9 @@ data class WalletConfig @JvmOverloads constructor(
     val responseTypesSupported: List<ResponseType> = getDefaultResponseTypeSupported(),
     val isPresentationDefinitionUriSupported: Boolean = true,
     val trustedVerifiers: List<Verifier> = emptyList(),
-    val validateTrustedVerifier: Boolean = true
+    val validateTrustedVerifier: Boolean = true,
+    // CA certificates for x509_hash Verifiers, each standard base64 of the DER encoding as in x5c
+    val verifierTrustAnchors: List<String> = emptyList()
 ) : java.io.Serializable {
     @Suppress("UNCHECKED_CAST")
     fun toWalletMetadata(
@@ -57,7 +59,7 @@ data class WalletConfig @JvmOverloads constructor(
                     }
                     walletMetadata["presentation_definition_uri_supported"] = isPresentationDefinitionUriSupported
                     walletMetadata["vp_formats_supported"] = vpFormats
-                    walletMetadata["client_id_schemes_supported"] = clientIdPrefixesSupported.map { ClientIdPrefix.toClientIdScheme(it) }
+                    walletMetadata["client_id_schemes_supported"] = clientIdPrefixesSupported.mapNotNull { ClientIdPrefix.toClientIdScheme(it) }
                     requestObjectSigningAlgValuesSupported?.let {
                         walletMetadata["request_object_signing_alg_values_supported"] = it.map { alg -> alg.value }
                     }

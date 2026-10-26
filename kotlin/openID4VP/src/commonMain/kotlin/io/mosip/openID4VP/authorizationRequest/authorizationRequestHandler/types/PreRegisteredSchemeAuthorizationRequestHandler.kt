@@ -81,8 +81,9 @@ class PreRegisteredSchemeAuthorizationRequestHandler(
 
     override fun extractPublicKey(
         algorithm: SignatureAlgorithm,
-        kid: String?,
+        jwsHeader: Map<String, Any>,
     ): PublicKey {
+        val kid = jwsHeader["kid"] as? String
         val verifier = walletConfig.trustedVerifiers.firstOrNull { it.clientId == super.clientId }
             ?: throw OpenID4VPExceptions.PublicKeyResolutionFailed(
                 "Public key extraction failed for keyId = $kid, algorithm: ${algorithm.name}",

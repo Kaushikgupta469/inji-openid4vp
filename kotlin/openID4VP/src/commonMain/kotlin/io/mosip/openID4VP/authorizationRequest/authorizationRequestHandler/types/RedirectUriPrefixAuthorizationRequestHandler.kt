@@ -54,7 +54,7 @@ class RedirectUriPrefixAuthorizationRequestHandler(
         return ClientIdPrefix.REDIRECT_URI.value
     }
 
-    override fun extractPublicKey(algorithm: SignatureAlgorithm, kid: String?): PublicKey {
+    override fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey {
         throw UnsupportedOperationException("Public key extraction is not supported for redirect_uri client_id_prefix")
     }
 

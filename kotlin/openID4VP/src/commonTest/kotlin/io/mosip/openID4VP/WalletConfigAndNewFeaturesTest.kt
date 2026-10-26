@@ -50,6 +50,21 @@ class WalletConfigTest {
     }
 
     @Test
+    fun `WalletConfig toWalletMetadata lists x509_hash for 1_0 and leaves it out of Draft 23 schemes`() {
+        val config = WalletConfig(
+            clientIdPrefixesSupported = listOf(ClientIdPrefix.DECENTRALIZED_IDENTIFIER, ClientIdPrefix.X509_HASH),
+            requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.ES256, SignatureAlgorithm.EdDSA)
+        )
+
+        val v1Metadata = config.toWalletMetadata(SpecVersion.V1)
+        val draft23Metadata = config.toWalletMetadata(SpecVersion.DRAFT_23)
+
+        assertEquals(listOf("decentralized_identifier", "x509_hash"), v1Metadata["client_id_prefixes_supported"])
+        assertEquals(listOf("ES256", "EdDSA"), v1Metadata["request_object_signing_alg_values_supported"])
+        assertEquals(listOf("did"), draft23Metadata["client_id_schemes_supported"])
+    }
+
+    @Test
     fun `WalletConfig default constructor provides sensible defaults`() {
         val config = WalletConfig()
 
@@ -60,6 +75,7 @@ class WalletConfigTest {
         assertTrue(config.trustedVerifiers.isEmpty())
         assertTrue(config.isPresentationDefinitionUriSupported)
         assertTrue(config.validateTrustedVerifier)
+        assertTrue(config.verifierTrustAnchors.isEmpty())
     }
 
     @Test
@@ -145,7 +161,7 @@ class GetFallbackForRequestUriTest {
                     PRESENTATION_DEFINITION.value to presentationDefinitionString,
                     CLIENT_METADATA.value to clientMetadataString
                 )).toMutableMap()
-        every { JWSHandler.verify(any(), any()) } returns Unit
+        every { JWSHandler.verify(any(), any(), any()) } returns Unit
 
         // May fail later during JWT validation, but we only care about HTTP method
         try {

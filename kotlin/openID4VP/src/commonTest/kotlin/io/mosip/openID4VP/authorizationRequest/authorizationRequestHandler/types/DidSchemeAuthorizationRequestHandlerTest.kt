@@ -111,7 +111,7 @@ class DidSchemeAuthorizationRequestHandlerTest {
             walletNonce = walletNonce
         )
 
-        val publicKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, testKid)
+        val publicKey = handler.extractPublicKey(SignatureAlgorithm.EdDSA, mapOf("kid" to testKid))
 
         assertEquals(mockPublicKey, publicKey)
         verify { resolver.resolve(didUrl, testKid) }
