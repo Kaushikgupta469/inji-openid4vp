@@ -5,8 +5,10 @@ import org.bouncycastle.util.encoders.Base64
 import java.io.ByteArrayInputStream
 import java.security.GeneralSecurityException
 import java.security.cert.CertPathValidator
+import java.security.cert.CertPathValidatorException
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
+import java.security.cert.PKIXCertPathValidatorResult
 import java.security.cert.PKIXParameters
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
@@ -38,7 +40,12 @@ internal fun validateCertificationPath(
         if (trustAnchorIndex == -1) certificateChain else certificateChain.take(trustAnchorIndex + 1)
     val certificationPath = CertificateFactory.getInstance("X.509", bouncyCastleProvider)
         .generateCertPath(certificationPathCertificates)
-    CertPathValidator.getInstance("PKIX", bouncyCastleProvider).validate(certificationPath, parameters)
+    val result = CertPathValidator.getInstance("PKIX", bouncyCastleProvider)
+        .validate(certificationPath, parameters) as PKIXCertPathValidatorResult
+    val trustAnchor = result.trustAnchor.trustedCert
+    if (trustAnchor != certificateChain.first() && trustAnchor.basicConstraints < 0) {
+        throw CertPathValidatorException("Trust anchor ${trustAnchor.subjectX500Principal} is not a CA certificate")
+    }
 }
 
 internal fun X509Certificate.isSelfSigned(): Boolean {

@@ -484,6 +484,25 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
     }
 
     @Test
+    fun `should reject a leaf certificate issued by a configured trust anchor that is not a CA`() {
+        val verifierAsIssuer = TestCertificateAuthority(
+            verifier.certificate,
+            verifier.keyPair,
+            issuer = X509HashTestData.rootCertificateAuthority
+        )
+        val impersonatingVerifier = X509HashTestData.createVerifierCredential(
+            subject = "C=IN,O=Other Bank,CN=Other Verifier",
+            issuer = verifierAsIssuer
+        )
+        walletConfig = walletConfig.copy(verifierTrustAnchors = listOf(verifier.x5cEntry))
+
+        assertRequestObjectRejectedAsUntrusted(
+            signedRequestObject(credential = impersonatingVerifier),
+            impersonatingVerifier.clientId
+        )
+    }
+
+    @Test
     fun `should reject a self-signed leaf certificate that is not a trust anchor as untrusted`() {
         val selfSignedVerifier = X509HashTestData.createSelfSignedVerifierCredential()
 
