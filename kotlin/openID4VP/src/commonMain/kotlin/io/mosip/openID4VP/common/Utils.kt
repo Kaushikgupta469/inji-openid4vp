@@ -178,16 +178,7 @@ fun resolveSdJwtKeyAndAlg(sdJwtCredential: String, className: String): Pair<Stri
     val kid = cnf["kid"] as? String
         ?: throw InvalidData("cnf must contain either 'jwk' or 'kid'", className)
 
-    val publicKey = DidPublicKeyResolver().resolve(kid.trimEnd('='), null)
-
-    val alg = when (publicKey.algorithm) {
-        "Ed25519" -> "EdDSA"
-        "EC" -> "ES256"
-        "RSA" -> "RS256"
-        else -> throw InvalidData("Unsupported key algorithm ${publicKey.algorithm}", className)
-    }
-
-    return kid to alg
+    return kid to resolveJWSAlgorithm(kid, className)
 }
 
 private fun resolveAlgFromJwk(jwk: Map<*, *>, className: String): String {

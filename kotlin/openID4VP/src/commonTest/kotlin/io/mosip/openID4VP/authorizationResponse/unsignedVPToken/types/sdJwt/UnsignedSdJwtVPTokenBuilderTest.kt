@@ -1,5 +1,6 @@
 package io.mosip.openID4VP.authorizationResponse.unsignedVPToken.types.sdJwt
 
+import com.nimbusds.jose.jwk.Curve
 import io.mockk.*
 import io.mosip.openID4VP.authorizationRequest.AuthorizationPresentationExchangeRequest
 import io.mosip.openID4VP.authorizationRequest.AuthorizationDcqlRequest
@@ -520,6 +521,42 @@ class UnsignedSdJwtVPTokenBuilderTest {
         assertEquals(FormatType.VC_SD_JWT, unsignedVPToken.first().format)
         assertEquals("ES256K", unsignedVPToken.first().signatureAlgorithm)
         assertFalse(capturedHeader.captured.containsKey("jwk"))
+    }
+
+    @Test
+    fun `should resolve ES256K for credential with secp256k1 cnf kid`() {
+        val mockSecpKey = mockk<java.security.interfaces.ECPublicKey>().apply {
+            every { algorithm } returns "EC"
+            every { params } returns Curve.SECP256K1.toECParameterSpec()
+        }
+        every { DidPublicKeyResolver().resolve("did:jwk:example", null) } returns mockSecpKey
+
+        every {
+            JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD)
+        } returns mutableMapOf(
+            "_sd_alg" to "SHA-256",
+            "cnf" to mapOf("kid" to "did:jwk:example")
+        )
+
+        val builder = UnsignedSdJwtVPTokenBuilder(
+            authorizationRequest = testAuthorizationRequest,
+            specVersion = SpecVersion.DRAFT_23,
+            walletConfig
+        )
+
+        val (_, unsignedVPToken) = builder.build(
+            listOf(
+                CredentialInputDescriptorMapping(
+                    FormatType.VC_SD_JWT,
+                    sdJwt1,
+                    "id1"
+                )
+            )
+        )
+
+        assertEquals(1, unsignedVPToken.size)
+        assertEquals("ES256K", unsignedVPToken.first().signatureAlgorithm)
+        assertEquals("did:jwk:example", unsignedVPToken.first().holderKeyReference)
     }
 
     @Test

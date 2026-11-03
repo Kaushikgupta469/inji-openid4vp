@@ -335,6 +335,31 @@ class UtilsTest {
         assertEquals("EdDSA", resolveSdJwtKeyAndAlg(credential, className).second)
     }
 
+    @Test
+    fun `resolveSdJwtKeyAndAlg infers ES256K for a secp256k1 confirmation kid`() {
+        mockkConstructor(DidPublicKeyResolver::class)
+        try {
+            val mockPublicKey = mockk<java.security.interfaces.ECPublicKey>().apply {
+                every { algorithm } returns "EC"
+                every { params } returns Curve.SECP256K1.toECParameterSpec()
+            }
+            every {
+                anyConstructed<DidPublicKeyResolver>().resolve(any(), any())
+            } returns mockPublicKey
+
+            val kid = "did:key:secp256k1-holder"
+            val (keyRef, alg) = resolveSdJwtKeyAndAlg(
+                sdJwt(mapOf("cnf" to mapOf("kid" to kid))),
+                className
+            )
+
+            assertEquals(kid, keyRef)
+            assertEquals("ES256K", alg)
+        } finally {
+            unmockkConstructor(DidPublicKeyResolver::class)
+        }
+    }
+
     private fun base64(bytes: ByteArray) = encoder.encodeToString(bytes)
 
     private fun sdJwt(payload: Map<String, Any>): String {
