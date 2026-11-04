@@ -16,6 +16,8 @@ import java.security.cert.X509Certificate
 // BouncyCastle on every platform, so keys are typed the same way on Android and the JVM
 private val bouncyCastleProvider by lazy { BouncyCastleProvider() }
 
+private const val KEY_USAGE_KEY_CERT_SIGN = 5
+
 // Exactly one DER-encoded certificate, with no trailing data
 internal fun parseX509Certificate(der: ByteArray): X509Certificate {
     val certificate = CertificateFactory.getInstance("X.509", bouncyCastleProvider)
@@ -42,9 +44,17 @@ internal fun validateCertificationPath(
         .generateCertPath(certificationPathCertificates)
     val result = CertPathValidator.getInstance("PKIX", bouncyCastleProvider)
         .validate(certificationPath, parameters) as PKIXCertPathValidatorResult
+    // The trust anchor must be a CA that is allowed to sign certificates
     val trustAnchor = result.trustAnchor.trustedCert
-    if (trustAnchor != certificateChain.first() && trustAnchor.basicConstraints < 0) {
-        throw CertPathValidatorException("Trust anchor ${trustAnchor.subjectX500Principal} is not a CA certificate")
+    if (trustAnchor != certificateChain.first()) {
+        if (trustAnchor.basicConstraints < 0) {
+            throw CertPathValidatorException("Trust anchor ${trustAnchor.subjectX500Principal} is not a CA certificate")
+        }
+        if (trustAnchor.keyUsage?.get(KEY_USAGE_KEY_CERT_SIGN) == false) {
+            throw CertPathValidatorException(
+                "Key usage of trust anchor ${trustAnchor.subjectX500Principal} does not allow keyCertSign"
+            )
+        }
     }
 }
 

@@ -404,6 +404,26 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
     }
 
     @Test
+    fun `should accept a leaf certificate issued by a configured trust anchor without a key usage extension`() {
+        val certificateAuthorityWithoutKeyUsage = X509HashTestData.createCertificateAuthority(
+            "C=IN,O=Demo Trust Services,CN=Demo Root CA Without Key Usage",
+            keyUsage = null
+        )
+        val verifierFromCertificateAuthority =
+            X509HashTestData.createVerifierCredential(issuer = certificateAuthorityWithoutKeyUsage)
+        walletConfig = walletConfig.copy(verifierTrustAnchors = listOf(certificateAuthorityWithoutKeyUsage.x5cEntry))
+
+        val authorizationRequest = createHandler(
+            requestByValue(
+                signedRequestObject(credential = verifierFromCertificateAuthority),
+                verifierFromCertificateAuthority.clientId
+            )
+        ).handle()
+
+        assertEquals(verifierFromCertificateAuthority.clientId, authorizationRequest.clientId)
+    }
+
+    @Test
     fun `should reject the request when no trust anchors are configured`() {
         walletConfig = walletConfig.copy(verifierTrustAnchors = emptyList())
 
@@ -499,6 +519,24 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
         assertRequestObjectRejectedAsUntrusted(
             signedRequestObject(credential = impersonatingVerifier),
             impersonatingVerifier.clientId
+        )
+    }
+
+    @Test
+    fun `should reject a leaf certificate issued by a configured trust anchor whose key usage does not allow keyCertSign`() {
+        val digitalSignatureOnlyCertificateAuthority = X509HashTestData.createCertificateAuthority(
+            "C=IN,O=Demo Trust Services,CN=Demo Digital Signature Only CA",
+            keyUsage = KeyUsage.digitalSignature
+        )
+        val verifierFromCertificateAuthority =
+            X509HashTestData.createVerifierCredential(issuer = digitalSignatureOnlyCertificateAuthority)
+        walletConfig = walletConfig.copy(
+            verifierTrustAnchors = listOf(digitalSignatureOnlyCertificateAuthority.x5cEntry)
+        )
+
+        assertRequestObjectRejectedAsUntrusted(
+            signedRequestObject(credential = verifierFromCertificateAuthority),
+            verifierFromCertificateAuthority.clientId
         )
     }
 
@@ -706,6 +744,7 @@ internal object X509HashTestData {
         issuer: TestCertificateAuthority? = null,
         notBefore: Date = Date(System.currentTimeMillis() - DAY_IN_MILLIS),
         notAfter: Date = Date(System.currentTimeMillis() + 3650 * DAY_IN_MILLIS),
+        keyUsage: Int? = KeyUsage.keyCertSign or KeyUsage.cRLSign,
     ): TestCertificateAuthority {
         val keyPair = generateKeyPair(VerifierKeyType.EC_P256)
         val certificateBuilder = certificateBuilder(
@@ -716,7 +755,7 @@ internal object X509HashTestData {
             notAfter = notAfter
         )
             .addExtension(Extension.basicConstraints, true, BasicConstraints(true))
-            .addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.keyCertSign or KeyUsage.cRLSign))
+        keyUsage?.let { certificateBuilder.addExtension(Extension.keyUsage, true, KeyUsage(it)) }
         val certificate = buildCertificate(certificateBuilder, signingKey = (issuer?.keyPair ?: keyPair).private)
         return TestCertificateAuthority(certificate, keyPair, issuer)
     }
