@@ -7,7 +7,6 @@ import io.mosip.openID4VP.authorizationRequest.validateRequestObjectSigningAlgSu
 import io.mosip.openID4VP.common.OpenID4VPErrorCodes
 import io.mosip.openID4VP.common.encodeToBase64UrlWithoutPadding
 import io.mosip.openID4VP.common.generateHash
-import io.mosip.openID4VP.common.isSelfSigned
 import io.mosip.openID4VP.common.parseX509Certificate
 import io.mosip.openID4VP.common.validateCertificationPath
 import io.mosip.openID4VP.constants.ClientIdPrefix
@@ -30,10 +29,8 @@ private const val X5C = "x5c"
 
 private const val DIGITAL_SIGNATURE_KEY_USAGE = 0
 
-// base64url SHA-256 hash without padding
 private val CERTIFICATE_HASH_PATTERN = Regex("^[A-Za-z0-9_-]{43}$")
 
-// x509_hash Client Identifier Prefix, OpenID4VP 1.0 section 5.9.3
 class X509HashPrefixAuthorizationRequestHandler(
     clientId: String,
     specVersion: SpecVersion,
@@ -96,19 +93,23 @@ class X509HashPrefixAuthorizationRequestHandler(
                 throw invalidRequestObject("x5c[$index] is not a valid DER-encoded X.509 certificate", e)
             }
         }
-        val leafCertificate = certificateChain.first()
 
-        validateAlgorithmMatchesKey(algorithm, leafCertificate.publicKey)
-        validateValidityPeriod(leafCertificate)
-        validateKeyUsage(leafCertificate)
-        validateTrustChain(certificateChain)
+        validateCertificateChain(algorithm, certificateChain)
 
-        return leafCertificate.publicKey
+        return certificateChain.first().publicKey
     }
 
     override fun getWalletMetadata(walletConfig: WalletConfig): Map<String, Any> {
         validateRequestObjectSigningAlgSupported(walletConfig)
         return walletConfig.toWalletMetadata(specVersion)
+    }
+
+    private fun validateCertificateChain(algorithm: SignatureAlgorithm, certificateChain: List<X509Certificate>) {
+        val leafCertificate = certificateChain.first()
+        validateAlgorithmMatchesKey(algorithm, leafCertificate.publicKey)
+        validateValidityPeriod(leafCertificate)
+        validateKeyUsage(leafCertificate)
+        validateTrustChain(certificateChain)
     }
 
     private fun extractCertificateChainBytes(jwsHeader: Map<String, Any>): List<ByteArray> {
@@ -129,7 +130,6 @@ class X509HashPrefixAuthorizationRequestHandler(
         }
     }
 
-    // OpenID4VP 1.0 section 5.9.3: the Wallet MUST validate the trust chain of the leaf certificate
     private fun validateTrustChain(certificateChain: List<X509Certificate>) {
         val trustAnchors = parseTrustAnchors()
         if (trustAnchors.isEmpty()) {
@@ -139,11 +139,6 @@ class X509HashPrefixAuthorizationRequestHandler(
             validateCertificationPath(certificateChain, trustAnchors)
         } catch (e: GeneralSecurityException) {
             throw invalidRequestObject("x5c certificate chain is not trusted: ${e.message}", e)
-        }
-        // HAIP 1.0: the leaf must not be self-signed. Checked after the chain is trusted, so an untrusted key
-        // is never used to verify a signature (CVE-2024-30172)
-        if (certificateChain.first().isSelfSigned()) {
-            throw invalidRequestObject("Leaf certificate in x5c must not be self-signed")
         }
     }
 

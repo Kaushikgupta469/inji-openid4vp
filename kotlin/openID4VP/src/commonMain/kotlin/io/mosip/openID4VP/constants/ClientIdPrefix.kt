@@ -11,7 +11,6 @@ enum class ClientIdPrefix(val value: String) {
             return entries.find { it.value == value }
         }
 
-        // Returns null when Draft 23 defines no Client Identifier Scheme for the prefix
         fun toClientIdScheme(clientIdPrefix: ClientIdPrefix): String? {
             return when (clientIdPrefix) {
                 PRE_REGISTERED -> ClientIdScheme.PRE_REGISTERED.value

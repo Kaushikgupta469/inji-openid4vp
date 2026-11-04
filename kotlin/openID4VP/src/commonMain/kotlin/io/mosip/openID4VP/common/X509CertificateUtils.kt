@@ -3,7 +3,6 @@ package io.mosip.openID4VP.common
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.encoders.Base64
 import java.io.ByteArrayInputStream
-import java.security.GeneralSecurityException
 import java.security.cert.CertPathValidator
 import java.security.cert.CertPathValidatorException
 import java.security.cert.CertificateException
@@ -18,7 +17,6 @@ private val bouncyCastleProvider by lazy { BouncyCastleProvider() }
 
 private const val KEY_USAGE_KEY_CERT_SIGN = 5
 
-// Exactly one DER-encoded certificate, with no trailing data
 internal fun parseX509Certificate(der: ByteArray): X509Certificate {
     val certificate = CertificateFactory.getInstance("X.509", bouncyCastleProvider)
         .generateCertificate(ByteArrayInputStream(der)) as? X509Certificate
@@ -28,7 +26,6 @@ internal fun parseX509Certificate(der: ByteArray): X509Certificate {
     return certificate
 }
 
-// RFC 5280 path validation of the chain (leaf first) to one of the trust anchors; revocation is not checked
 internal fun validateCertificationPath(
     certificateChain: List<X509Certificate>,
     trustAnchors: List<X509Certificate>,
@@ -55,16 +52,6 @@ internal fun validateCertificationPath(
                 "Key usage of trust anchor ${trustAnchor.subjectX500Principal} does not allow keyCertSign"
             )
         }
-    }
-}
-
-internal fun X509Certificate.isSelfSigned(): Boolean {
-    if (subjectX500Principal != issuerX500Principal) return false
-    return try {
-        verify(publicKey)
-        true
-    } catch (e: GeneralSecurityException) {
-        false
     }
 }
 

@@ -23,7 +23,6 @@ class JWSHandler {
     }
 
     companion object {
-        // The JWS alg selects the verifier, so a key of another type is rejected
         fun verify(jws: String, publicKey: PublicKey, algorithm: SignatureAlgorithm) {
             val verificationResult: Boolean
             try {

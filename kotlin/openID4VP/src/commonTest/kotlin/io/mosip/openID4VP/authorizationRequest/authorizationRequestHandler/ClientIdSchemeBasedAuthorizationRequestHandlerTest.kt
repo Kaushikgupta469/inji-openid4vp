@@ -492,70 +492,6 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     }
 
     @Test
-    fun `should reject a signed request by value with an algorithm the prefix does not verify, even when the wallet lists it`() {
-        val authorizationRequestParamsMap = createAuthorizationRequest(
-            authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
-            clientIdOfPreRegistered + requestParams,
-            isSigned = true
-        ) as MutableMap<String, Any>
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "ES256", "typ" to "oauth-authz-req+jwt")
-        val mockHandler = createMockHandler(
-            authorizationRequestParameters = authorizationRequestParamsMap,
-            walletConfig = WalletConfig(
-                requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
-            ),
-            extractPublicKey = { _, _ -> throw AssertionError("the key must not be resolved for an unsupported alg") },
-            supportedSignatureAlgorithms = listOf(SignatureAlgorithm.EdDSA)
-        )
-
-        val exception = assertFailsWith<OpenID4VPExceptions.VerificationFailure> {
-            mockHandler.fetchAuthorizationRequest()
-        }
-
-        assertOpenId4VPException(
-            exception,
-            "Request URI response validation failed Signing algorithm 'ES256' is not supported for client_id_prefix PRE_REGISTERED",
-            INVALID_REQUEST
-        )
-    }
-
-    @Test
-    fun `should send only the algorithms the prefix verifies in the wallet metadata for request_uri post`() {
-        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to didUrl,
-            REQUEST_URI.value to requestUrl,
-            REQUEST_URI_METHOD.value to POST.name
-        )
-        val authorizationRequestObjectMap = (createAuthorizationRequest(
-            authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.DECENTRALIZED_IDENTIFIER]!!,
-            requestParams = clientIdOfDid + requestParams
-        ) + mapOf(WALLET_NONCE.value to walletNonce)) as MutableMap<String, Any>
-        every { JWSHandler.verify(any(), any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns authorizationRequestObjectMap
-        every { NetworkManagerClient.sendHTTPRequest(any(), any(), any(), any()) } returns NetworkResponse(
-            200,
-            createAuthorizationRequestObject(ClientIdPrefix.PRE_REGISTERED, authorizationRequestParamsMap as Map<String, String>).toString(),
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt")),
-        )
-        var walletConfigForMetadata: WalletConfig? = null
-        val mockHandler = createMockHandler(
-            authorizationRequestParameters = authorizationRequestParamsMap,
-            walletConfig = walletConfig.copy(
-                requestObjectSigningAlgValuesSupported = listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
-            ),
-            extractPublicKey = { _, _ -> mockk<PublicKey>() },
-            supportedSignatureAlgorithms = listOf(SignatureAlgorithm.EdDSA),
-            walletNonce = walletNonce,
-            getWalletMetadata = { walletConfigForMetadata = it; mapOf() }
-        )
-
-        mockHandler.fetchAuthorizationRequest()
-
-        assertEquals(listOf(SignatureAlgorithm.EdDSA), walletConfigForMetadata?.requestObjectSigningAlgValuesSupported)
-    }
-
-    @Test
     fun `should throw error when the request param has invalid input`() {
         val authorizationRequestParamsMap : MutableMap<String, Any> = mutableMapOf(
             REQUEST.value to "",
@@ -1026,9 +962,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         isUnsignedRequestSupported: Boolean = true,
         clientIdScheme: String = "PRE_REGISTERED",
         extractPublicKey: ((SignatureAlgorithm, Map<String, Any>) -> PublicKey)? = null,
-        supportedSignatureAlgorithms: List<SignatureAlgorithm>? = null,
-        confirmSpecVersionIdentifiedFromRequest: Boolean = true,
-        getWalletMetadata: (WalletConfig) -> Map<String, Any> = { mapOf() }
+        confirmSpecVersionIdentifiedFromRequest: Boolean = true
     ): ClientIdPrefixBasedAuthorizationRequestHandler {
         return object : ClientIdPrefixBasedAuthorizationRequestHandler(
             clientId = authorizationRequestParameters[CLIENT_ID.value]?.toString() ?: "mock-client",
@@ -1042,10 +976,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             override fun isUnsignedRequestSupported() = isUnsignedRequestSupported
             override fun clientIdPrefix() = clientIdScheme
             override fun confirmSpecVersionIdentifiedFromRequest() = confirmSpecVersionIdentifiedFromRequest
-            override fun supportedSignatureAlgorithms() = supportedSignatureAlgorithms ?: super.supportedSignatureAlgorithms()
             override fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey =
                 extractPublicKey?.invoke(algorithm, jwsHeader) ?: throw NotImplementedError()
-            override fun getWalletMetadata(walletConfig: WalletConfig): Map<String, Any> = getWalletMetadata(walletConfig)
+            override fun getWalletMetadata(walletConfig: WalletConfig): Map<String, Any> = mapOf()
         }
     }
 }

@@ -9,9 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class X509CertificateUtilsTest {
 
@@ -68,14 +66,6 @@ class X509CertificateUtilsTest {
         assertFailsWith<GeneralSecurityException> {
             validateCertificationPath(listOf(verifier.certificate), listOf(otherCertificateAuthority.certificate))
         }
-    }
-
-    @Test
-    fun `isSelfSigned should be true only for a certificate that verifies with its own key`() {
-        assertTrue(X509HashTestData.rootCertificateAuthority.certificate.isSelfSigned())
-        assertTrue(X509HashTestData.createSelfSignedVerifierCredential().certificate.isSelfSigned())
-        assertFalse(X509HashTestData.intermediateCertificateAuthority.certificate.isSelfSigned())
-        assertFalse(verifier.certificate.isSelfSigned())
     }
 
     @Test

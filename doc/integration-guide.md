@@ -338,7 +338,7 @@ This method:
 **Client validation:**
 - For `pre-registered` clients: validates against `WalletConfig.trustedVerifiers`
 - Can be disabled by setting `WalletConfig.validateTrustedVerifier` to `false` in wallet config
-- For `x509_hash` clients: the `x5c` certificate chain must validate to one of `WalletConfig.verifierTrustAnchors` (signatures, validity periods and CA constraints; revocation is not checked), and the leaf certificate must not be self-signed. `validateTrustedVerifier` does not turn this off
+- For `x509_hash` clients: the `x5c` certificate chain must validate to one of `WalletConfig.verifierTrustAnchors` (signatures, validity periods and CA constraints; revocation is not checked). `validateTrustedVerifier` does not turn this off
 
 ```kotlin
 val authorizationRequest: AuthorizationRequest = openID4VP.authenticateVerifier(

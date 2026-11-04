@@ -81,17 +81,6 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
 
     open fun confirmSpecVersionIdentifiedFromRequest(): Boolean = true
 
-    /// Signature algorithms this prefix verifies signed Authorization Requests with.
-    open fun supportedSignatureAlgorithms(): List<SignatureAlgorithm> =
-        listOf(SignatureAlgorithm.EdDSA, SignatureAlgorithm.ES256)
-
-    private val prefixWalletConfig: WalletConfig by lazy {
-        walletConfig.copy(
-            requestObjectSigningAlgValuesSupported = walletConfig.requestObjectSigningAlgValuesSupported
-                ?.filter { it in supportedSignatureAlgorithms() }
-        )
-    }
-
     /// Validates the authenticity of the client identifier.
     /// For example, ensures that a client claiming to use a specific prefix is actually authorized or trusted.
     open fun validateClientAuthenticity() {}
@@ -215,7 +204,7 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
             )
             isClientIdPrefixSupported(walletConfig)
             try {
-                val processedWalletMetadata = getWalletMetadata(prefixWalletConfig)
+                val processedWalletMetadata = getWalletMetadata(walletConfig)
                 body = body.plus(
                     mapOf(
                         "wallet_metadata" to encodeToJsonString(
@@ -376,9 +365,6 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
                 )
 
             val algorithm = SignatureAlgorithm.valueOf(algString)
-            require(algorithm in supportedSignatureAlgorithms()) {
-                "Signing algorithm '$algString' is not supported for client_id_prefix ${clientIdPrefix()}"
-            }
 
             validateAuthorizationSignatureAlgorithm(algorithm)
 

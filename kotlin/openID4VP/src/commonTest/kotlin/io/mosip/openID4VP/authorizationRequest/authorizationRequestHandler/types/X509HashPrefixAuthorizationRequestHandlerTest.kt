@@ -551,15 +551,15 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
     }
 
     @Test
-    fun `should reject a self-signed leaf certificate even when it is configured as a trust anchor`() {
+    fun `should accept a self-signed leaf certificate that is configured as a trust anchor`() {
         val selfSignedVerifier = X509HashTestData.createSelfSignedVerifierCredential()
         walletConfig = walletConfig.copy(verifierTrustAnchors = listOf(selfSignedVerifier.x5cEntry))
 
-        assertRequestObjectRejected(
-            signedRequestObject(credential = selfSignedVerifier),
-            "Leaf certificate in x5c must not be self-signed",
-            clientId = selfSignedVerifier.clientId
-        )
+        val authorizationRequest = createHandler(
+            requestByValue(signedRequestObject(credential = selfSignedVerifier), selfSignedVerifier.clientId)
+        ).handle()
+
+        assertEquals(selfSignedVerifier.clientId, authorizationRequest.clientId)
     }
 
     @Test

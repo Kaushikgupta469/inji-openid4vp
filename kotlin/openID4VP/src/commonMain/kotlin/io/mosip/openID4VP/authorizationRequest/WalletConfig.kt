@@ -16,7 +16,6 @@ data class WalletConfig @JvmOverloads constructor(
     val isPresentationDefinitionUriSupported: Boolean = true,
     val trustedVerifiers: List<Verifier> = emptyList(),
     val validateTrustedVerifier: Boolean = true,
-    // CA certificates for x509_hash Verifiers, each standard base64 of the DER encoding as in x5c
     val verifierTrustAnchors: List<String> = emptyList()
 ) : java.io.Serializable {
     @Suppress("UNCHECKED_CAST")
