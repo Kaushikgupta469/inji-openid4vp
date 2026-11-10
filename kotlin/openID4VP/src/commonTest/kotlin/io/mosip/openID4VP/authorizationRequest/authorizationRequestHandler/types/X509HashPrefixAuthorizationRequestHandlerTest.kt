@@ -214,14 +214,9 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
 
     @Test
     fun `should reject the request when the signing algorithm is not supported`() {
-        val exception = assertFailsWith<OpenID4VPExceptions.VerificationFailure> {
-            createHandler(requestByValue(signedRequestObject(alg = "ES384"))).handle()
-        }
-
-        assertEquals(OpenID4VPErrorCodes.INVALID_REQUEST, exception.errorCode)
-        assertEquals(
-            "Request URI response validation failed No enum constant io.mosip.openID4VP.constants.SignatureAlgorithm.ES384",
-            exception.message
+        assertRequestObjectRejected(
+            signedRequestObject(alg = "ES384"),
+            "request_object_signing_alg is not supported by wallet"
         )
     }
 

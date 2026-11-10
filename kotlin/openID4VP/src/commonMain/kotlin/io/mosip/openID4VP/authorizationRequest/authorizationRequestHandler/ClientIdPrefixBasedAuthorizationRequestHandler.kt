@@ -364,7 +364,12 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
                     OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT
                 )
 
-            val algorithm = SignatureAlgorithm.valueOf(algString)
+            val algorithm = SignatureAlgorithm.fromValue(algString)
+                ?: throw OpenID4VPExceptions.InvalidData(
+                    "request_object_signing_alg is not supported by wallet",
+                    className,
+                    OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT
+                )
 
             validateAuthorizationSignatureAlgorithm(algorithm)
 
