@@ -118,7 +118,7 @@ class X509HashPrefixAuthorizationRequestHandler(
             throw invalidRequestObject("x5c certificate chain is missing in the JWS header")
         }
         return certificateChain.mapIndexed { index, certificate ->
-            if (certificate !is String || certificate.isBlank()) {
+            if (certificate !is String || certificate.isBlank() || certificate.any { it.isWhitespace() }) {
                 throw invalidRequestObject("x5c[$index] must be a base64-encoded DER X.509 certificate")
             }
             // x5c entries are standard base64, not base64url
@@ -133,7 +133,10 @@ class X509HashPrefixAuthorizationRequestHandler(
     private fun validateTrustChain(certificateChain: List<X509Certificate>) {
         val trustAnchors = parseTrustAnchors()
         if (trustAnchors.isEmpty()) {
-            throw invalidRequestObject("No trust anchors are configured to validate the x5c certificate chain")
+            throw invalidRequestObject(
+                "No trust anchors are configured to validate the x5c certificate chain",
+                notifyVerifier = false
+            )
         }
         try {
             validateCertificationPath(certificateChain, trustAnchors)
@@ -149,7 +152,8 @@ class X509HashPrefixAuthorizationRequestHandler(
             } catch (e: Exception) {
                 throw invalidRequestObject(
                     "verifierTrustAnchors[$index] in the wallet configuration is not a base64-encoded DER X.509 certificate",
-                    e
+                    e,
+                    notifyVerifier = false
                 )
             }
         }
@@ -183,11 +187,12 @@ class X509HashPrefixAuthorizationRequestHandler(
         }
     }
 
-    private fun invalidRequestObject(message: String, cause: Throwable? = null) =
+    private fun invalidRequestObject(message: String, cause: Throwable? = null, notifyVerifier: Boolean = true) =
         OpenID4VPExceptions.InvalidData(
             message,
             className,
             OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT,
+            notifyVerifier = notifyVerifier,
             cause = cause
         )
 }

@@ -387,7 +387,8 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
             throw OpenID4VPExceptions.InvalidData(
                 "Request URI response validation failed - ${e.message}",
                 className,
-                OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT
+                OpenID4VPErrorCodes.INVALID_REQUEST_OBJECT,
+                notifyVerifier = e.notifyVerifier
             )
         } catch (e: Exception) {
             throw OpenID4VPExceptions.VerificationFailure(

@@ -62,6 +62,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -297,6 +298,17 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
     }
 
     @Test
+    fun `should reject the request when x5c leaf contains whitespace`() {
+        val header = X509HashTestData.requestObjectHeader(verifier) +
+                ("x5c" to listOf(verifier.x5cEntry.chunked(64).joinToString("\n")))
+
+        assertRequestObjectRejected(
+            signedRequestObject(header = header),
+            "x5c[0] must be a base64-encoded DER X.509 certificate"
+        )
+    }
+
+    @Test
     fun `should reject the request when it is not signed with the leaf certificate key`() {
         val otherKeyPair = X509HashTestData.generateKeyPair(VerifierKeyType.EC_P256)
 
@@ -429,6 +441,17 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
     }
 
     @Test
+    fun `should not notify the verifier when no trust anchors are configured`() {
+        walletConfig = walletConfig.copy(verifierTrustAnchors = emptyList())
+
+        val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
+            createHandler(requestByValue(signedRequestObject())).handle()
+        }
+
+        assertFalse(exception.notifyVerifier)
+    }
+
+    @Test
     fun `should reject the request when a configured trust anchor is not a certificate`() {
         walletConfig = walletConfig.copy(
             verifierTrustAnchors = listOf(X509HashTestData.rootCertificateAuthority.x5cEntry, "not a certificate")
@@ -438,6 +461,28 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
             signedRequestObject(),
             "verifierTrustAnchors[1] in the wallet configuration is not a base64-encoded DER X.509 certificate"
         )
+    }
+
+    @Test
+    fun `should not notify the verifier when a configured trust anchor is not a certificate`() {
+        walletConfig = walletConfig.copy(verifierTrustAnchors = listOf("not a certificate"))
+
+        val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
+            createHandler(requestByValue(signedRequestObject())).handle()
+        }
+
+        assertFalse(exception.notifyVerifier)
+    }
+
+    @Test
+    fun `should accept a trust anchor wrapped over several lines`() {
+        walletConfig = walletConfig.copy(
+            verifierTrustAnchors = listOf(X509HashTestData.rootCertificateAuthority.x5cEntry.chunked(64).joinToString("\n"))
+        )
+
+        val authorizationRequest = createHandler(requestByValue(signedRequestObject())).handle()
+
+        assertEquals(verifier.clientId, authorizationRequest.clientId)
     }
 
     @Test
