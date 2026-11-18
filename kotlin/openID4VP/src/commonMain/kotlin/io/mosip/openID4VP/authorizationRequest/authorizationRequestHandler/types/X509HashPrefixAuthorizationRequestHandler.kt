@@ -83,7 +83,7 @@ class X509HashPrefixAuthorizationRequestHandler(
         val certificateChainBytes = extractCertificateChainBytes(jwsHeader)
 
         if (encodeToBase64UrlWithoutPadding(generateHash(certificateChainBytes.first())) != certificateHash) {
-            throw invalidRequestObject("client_id does not match the SHA-256 hash of the leaf certificate in x5c")
+            throw invalidRequestObject("Certificate hash mismatch: the SHA-256 hash of the leaf certificate in x5c does not match the hash in the client_id")
         }
 
         val certificateChain = certificateChainBytes.mapIndexed { index, certificateBytes ->

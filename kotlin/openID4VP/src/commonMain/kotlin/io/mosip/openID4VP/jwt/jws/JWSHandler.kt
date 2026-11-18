@@ -36,6 +36,10 @@ class JWSHandler {
                 val signatureVerifier = when (algorithm) {
                     SignatureAlgorithm.EdDSA -> ED25519SignatureVerifierImpl()
                     SignatureAlgorithm.ES256 -> ES256SignatureVerifierImpl()
+                    else -> throw OpenID4VPExceptions.VerificationFailure(
+                        "Unsupported signature algorithm: ${algorithm.value}",
+                        className
+                    )
                 }
                 verificationResult = signatureVerifier.verify(
                     publicKey = publicKey,

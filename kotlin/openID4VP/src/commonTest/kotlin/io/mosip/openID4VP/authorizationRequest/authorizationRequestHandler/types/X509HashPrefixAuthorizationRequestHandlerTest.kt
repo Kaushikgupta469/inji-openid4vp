@@ -266,7 +266,7 @@ class X509HashPrefixAuthorizationRequestHandlerTest {
 
         assertRequestObjectRejected(
             signedRequestObject(clientId = otherVerifier.clientId),
-            "client_id does not match the SHA-256 hash of the leaf certificate in x5c",
+            "Certificate hash mismatch: the SHA-256 hash of the leaf certificate in x5c does not match the hash in the client_id",
             clientId = otherVerifier.clientId
         )
     }

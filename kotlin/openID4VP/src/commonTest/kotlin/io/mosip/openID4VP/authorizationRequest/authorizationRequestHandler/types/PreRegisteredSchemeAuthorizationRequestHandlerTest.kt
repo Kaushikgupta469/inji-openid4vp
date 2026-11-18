@@ -353,6 +353,19 @@ class PreRegisteredSchemeAuthorizationRequestHandlerTest {
     }
 
     @Test
+    fun `should throw error when an EC key has an empty x coordinate`() {
+        authorizationRequestParameters[CLIENT_ID.value] = "test-client"
+        val withEmptyX = generateP256PublicKey().toP256Jwk(kid = "ec-kid").copy(x = "")
+        every { resolveJwksFromUri(any(), any()) } returns Jwks(listOf(withEmptyX))
+
+        val ex = assertFailsWith<OpenID4VPExceptions.PublicKeyResolutionFailed> {
+            handlerFor("test-client").extractPublicKey(SignatureAlgorithm.ES256, mapOf("kid" to "ec-kid"))
+        }
+
+        assertTrue(ex.message.contains("x is required for an EC key"))
+    }
+
+    @Test
     fun `should throw error when an EC key is not a point on the P-256 curve`() {
         authorizationRequestParameters[CLIENT_ID.value] = "test-client"
         val validJwk = generateP256PublicKey().toP256Jwk(kid = null)
