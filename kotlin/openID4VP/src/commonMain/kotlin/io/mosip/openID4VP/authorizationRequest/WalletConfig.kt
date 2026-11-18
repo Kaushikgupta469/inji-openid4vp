@@ -58,7 +58,9 @@ data class WalletConfig @JvmOverloads constructor(
                     }
                     walletMetadata["presentation_definition_uri_supported"] = isPresentationDefinitionUriSupported
                     walletMetadata["vp_formats_supported"] = vpFormats
-                    walletMetadata["client_id_schemes_supported"] = clientIdPrefixesSupported.mapNotNull { ClientIdPrefix.toClientIdScheme(it) }
+                    walletMetadata["client_id_schemes_supported"] = clientIdPrefixesSupported
+                        .filter { it != ClientIdPrefix.X509_HASH }
+                        .map { ClientIdPrefix.toClientIdScheme(it) }
                     requestObjectSigningAlgValuesSupported?.let {
                         walletMetadata["request_object_signing_alg_values_supported"] = it.map { alg -> alg.value }
                     }

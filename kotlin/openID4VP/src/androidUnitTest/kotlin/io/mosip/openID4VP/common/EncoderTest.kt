@@ -5,6 +5,7 @@ import android.util.Base64.encodeToString
 import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockkStatic
+import io.mockk.verify
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -35,5 +36,14 @@ class EncoderTest {
         val encodedData = encodeToBase64Url("hello world".toByteArray())
 
         assertEquals("aGVsbG8gd29ybGQ", encodedData)
+    }
+
+    @Test
+    fun `should encode with the URL-safe alphabet without padding or line breaks with API lesser than Version O`() {
+        every { encodeToString(any(), any()) } returns "aGVsbG8gd29ybGQ"
+
+        encodeToBase64Url("hello world".toByteArray())
+
+        verify { encodeToString(any(), Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP) }
     }
 }

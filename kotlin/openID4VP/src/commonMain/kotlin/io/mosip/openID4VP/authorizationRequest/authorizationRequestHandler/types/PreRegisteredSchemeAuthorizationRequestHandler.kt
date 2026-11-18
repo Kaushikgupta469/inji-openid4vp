@@ -176,13 +176,13 @@ class PreRegisteredSchemeAuthorizationRequestHandler(
     }
 
     private fun buildP256PublicKey(x: String, y: String?): PublicKey {
-        if (x.isBlank()) {
+        if (x.isNullOrBlank()) {
             throw OpenID4VPExceptions.PublicKeyResolutionFailed(
                 "Public key extraction failed - x is required for an EC key",
                 className
             )
         }
-        if (y == null) {
+        if (y.isNullOrBlank()) {
             throw OpenID4VPExceptions.PublicKeyResolutionFailed(
                 "Public key extraction failed - y is required for an EC key",
                 className

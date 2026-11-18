@@ -3,6 +3,8 @@ package io.mosip.openID4VP.common
 import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Base64.NO_PADDING
+import android.util.Base64.NO_WRAP
+import android.util.Base64.URL_SAFE
 import android.util.Base64.encodeToString
 import io.mosip.vercred.vcverifier.utils.BuildConfig.getVersionSDKInt
 import java.util.Base64.getUrlEncoder
@@ -21,6 +23,6 @@ private fun javaBase64UrlEncode(data: ByteArray): String =
     getUrlEncoder().withoutPadding().encodeToString(data)
 
 private fun androidBase64UrlEncode(data: ByteArray): String {
-    val base64 = encodeToString(data, NO_PADDING)
+    val base64 = encodeToString(data, URL_SAFE or NO_PADDING or NO_WRAP)
     return base64
 }

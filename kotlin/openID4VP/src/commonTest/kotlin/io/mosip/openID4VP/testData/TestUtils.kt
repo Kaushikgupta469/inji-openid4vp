@@ -202,7 +202,9 @@ fun assertWalletConfigAndMetadata(
     }
     if (walletMetadata.containsKey("client_id_schemes_supported")) {
         assertEquals(
-            walletConfig.clientIdPrefixesSupported.mapNotNull { ClientIdPrefix.toClientIdScheme(it) },
+            walletConfig.clientIdPrefixesSupported
+                .filter { it != ClientIdPrefix.X509_HASH }
+                .map { ClientIdPrefix.toClientIdScheme(it) },
             walletMetadata["client_id_schemes_supported"]
         )
     }

@@ -398,7 +398,6 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
         }
     }
 
-    /// Resolves the public key that verifies the signed Authorization Request from its JWS header.
     abstract fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey
 
     private fun isValidContentType(headers: Map<String, List<String>>): Boolean {

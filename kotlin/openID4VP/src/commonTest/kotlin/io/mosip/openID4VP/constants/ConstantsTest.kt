@@ -1,7 +1,9 @@
 package io.mosip.openID4VP.constants
 
 import kotlin.test.Test
+import io.mosip.openID4VP.exceptions.OpenID4VPExceptions
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class ConstantsTest {
@@ -59,11 +61,13 @@ class ConstantsTest {
     }
 
     @Test
-    fun `ClientIdPrefix maps to the Draft 23 Client Identifier Scheme and to none for x509_hash`() {
+    fun `ClientIdPrefix maps to the Draft 23 Client Identifier Scheme and rejects x509_hash as unsupported`() {
         assertEquals("pre-registered", ClientIdPrefix.toClientIdScheme(ClientIdPrefix.PRE_REGISTERED))
         assertEquals("redirect_uri", ClientIdPrefix.toClientIdScheme(ClientIdPrefix.REDIRECT_URI))
         assertEquals("did", ClientIdPrefix.toClientIdScheme(ClientIdPrefix.DECENTRALIZED_IDENTIFIER))
-        assertNull(ClientIdPrefix.toClientIdScheme(ClientIdPrefix.X509_HASH))
+        assertFailsWith<OpenID4VPExceptions.InvalidData> {
+            ClientIdPrefix.toClientIdScheme(ClientIdPrefix.X509_HASH)
+        }
     }
 
     @Test

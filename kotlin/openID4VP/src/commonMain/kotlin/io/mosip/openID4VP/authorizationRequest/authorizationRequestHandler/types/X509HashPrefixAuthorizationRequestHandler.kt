@@ -5,7 +5,7 @@ import io.mosip.openID4VP.authorizationRequest.WalletConfig
 import io.mosip.openID4VP.authorizationRequest.authorizationRequestHandler.ClientIdPrefixBasedAuthorizationRequestHandler
 import io.mosip.openID4VP.authorizationRequest.validateRequestObjectSigningAlgSupported
 import io.mosip.openID4VP.common.OpenID4VPErrorCodes
-import io.mosip.openID4VP.common.encodeToBase64UrlWithoutPadding
+import io.mosip.openID4VP.common.encodeToBase64Url
 import io.mosip.openID4VP.common.generateHash
 import io.mosip.openID4VP.common.parseX509Certificate
 import io.mosip.openID4VP.common.validateCertificationPath
@@ -82,7 +82,7 @@ class X509HashPrefixAuthorizationRequestHandler(
     override fun extractPublicKey(algorithm: SignatureAlgorithm, jwsHeader: Map<String, Any>): PublicKey {
         val certificateChainBytes = extractCertificateChainBytes(jwsHeader)
 
-        if (encodeToBase64UrlWithoutPadding(generateHash(certificateChainBytes.first())) != certificateHash) {
+        if (encodeToBase64Url(generateHash(certificateChainBytes.first())) != certificateHash) {
             throw invalidRequestObject("Certificate hash mismatch: the SHA-256 hash of the leaf certificate in x5c does not match the hash in the client_id")
         }
 
@@ -121,7 +121,6 @@ class X509HashPrefixAuthorizationRequestHandler(
             if (certificate !is String || certificate.isBlank() || certificate.any { it.isWhitespace() }) {
                 throw invalidRequestObject("x5c[$index] must be a base64-encoded DER X.509 certificate")
             }
-            // x5c entries are standard base64, not base64url
             try {
                 Base64.decode(certificate)
             } catch (e: DecoderException) {

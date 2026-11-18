@@ -1,7 +1,6 @@
 package io.mosip.openID4VP.common
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.util.encoders.Base64
 import java.io.ByteArrayInputStream
 import java.security.cert.CertPathValidator
 import java.security.cert.CertPathValidatorException
@@ -12,7 +11,6 @@ import java.security.cert.PKIXParameters
 import java.security.cert.TrustAnchor
 import java.security.cert.X509Certificate
 
-// BouncyCastle on every platform, so keys are typed the same way on Android and the JVM
 private val bouncyCastleProvider by lazy { BouncyCastleProvider() }
 
 private const val KEY_USAGE_KEY_CERT_SIGN = 5
@@ -33,7 +31,6 @@ internal fun validateCertificationPath(
     val parameters = PKIXParameters(trustAnchors.map { TrustAnchor(it, null) }.toSet()).apply {
         isRevocationEnabled = false
     }
-    // The path ends before a trust anchor that the chain itself carries
     val trustAnchorIndex = certificateChain.drop(1).indexOfFirst { it in trustAnchors }
     val certificationPathCertificates =
         if (trustAnchorIndex == -1) certificateChain else certificateChain.take(trustAnchorIndex + 1)
@@ -41,7 +38,6 @@ internal fun validateCertificationPath(
         .generateCertPath(certificationPathCertificates)
     val result = CertPathValidator.getInstance("PKIX", bouncyCastleProvider)
         .validate(certificationPath, parameters) as PKIXCertPathValidatorResult
-    // The trust anchor must be a CA that is allowed to sign certificates
     val trustAnchor = result.trustAnchor.trustedCert
     if (trustAnchor != certificateChain.first()) {
         if (trustAnchor.basicConstraints < 0) {
@@ -53,9 +49,4 @@ internal fun validateCertificationPath(
             )
         }
     }
-}
-
-// The shared encodeToBase64Url is not URL-safe on Android below API 26
-internal fun encodeToBase64UrlWithoutPadding(data: ByteArray): String {
-    return Base64.toBase64String(data).trimEnd('=').replace('+', '-').replace('/', '_')
 }

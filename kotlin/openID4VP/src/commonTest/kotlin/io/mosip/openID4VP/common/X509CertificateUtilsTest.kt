@@ -67,13 +67,4 @@ class X509CertificateUtilsTest {
             validateCertificationPath(listOf(verifier.certificate), listOf(otherCertificateAuthority.certificate))
         }
     }
-
-    @Test
-    fun `encodeToBase64UrlWithoutPadding should use the URL-safe alphabet without padding`() {
-        // SHA-256 of "abc" in standard base64 is "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="
-        assertEquals(
-            "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0",
-            encodeToBase64UrlWithoutPadding(generateHash("abc".toByteArray()))
-        )
-    }
 }
