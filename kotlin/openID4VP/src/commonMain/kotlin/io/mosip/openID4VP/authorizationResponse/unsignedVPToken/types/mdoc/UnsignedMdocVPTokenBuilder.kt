@@ -2,28 +2,25 @@ package io.mosip.openID4VP.authorizationResponse.unsignedVPToken.types.mdoc
 
 import co.nstant.`in`.cbor.model.ByteString
 import co.nstant.`in`.cbor.model.DataItem
-import co.nstant.`in`.cbor.model.UnicodeString
 import io.mosip.openID4VP.authorizationRequest.AuthorizationRequest
 import io.mosip.openID4VP.authorizationRequest.WalletConfig
 import io.mosip.openID4VP.authorizationResponse.CredentialInputDescriptorMapping
 import io.mosip.openID4VP.authorizationResponse.CredentialToCredentialQueryIdMapping
 import io.mosip.openID4VP.authorizationResponse.unsignedVPToken.UnsignedVPToken
 import io.mosip.openID4VP.authorizationResponse.unsignedVPToken.UnsignedVPTokenBuilder
-import io.mosip.openID4VP.cose.CoseSignature1Utils
 import io.mosip.openID4VP.common.MdocCredentialUtils.getMdocDocType
+import io.mosip.openID4VP.common.MdocDeviceResponseUtils
 import io.mosip.openID4VP.common.MdocCredentialUtils.extractMdocKeyReferenceAndAlg
 import io.mosip.openID4VP.common.UUIDGenerator
 import io.mosip.openID4VP.common.cborArrayOf
 import io.mosip.openID4VP.common.createHashedDataItem
 import io.mosip.openID4VP.common.encodeCbor
 import io.mosip.openID4VP.common.generateHash
-import io.mosip.openID4VP.common.taggedCbor24
 import io.mosip.openID4VP.common.toJWKThumbprintBstr
 import io.mosip.openID4VP.constants.FormatType
 import io.mosip.openID4VP.constants.SpecVersion
 import io.mosip.openID4VP.exceptions.OpenID4VPExceptions
 import io.mosip.openID4VP.responseModeHandler.ResponseModeBasedHandlerFactory
-import co.nstant.`in`.cbor.model.Map as CborMap
 
 
 private const val className = "UnsignedMdocVPTokenBuilder"
@@ -39,15 +36,13 @@ internal class UnsignedMdocVPTokenBuilder(
     fun build(credentialInputDescriptorMappings: List<CredentialInputDescriptorMapping>): Pair<Map<String, ByteArray>, List<UnsignedVPToken>> {
         val uuidToDeviceAuthenticationBytes = mutableMapOf<String, ByteArray>()
 
-        val sessionTranscript = getSessionTranscript()
-        val deviceNameSpacesBytes = getDeviceNamespacesBytes()
+        val sessionTranscript = encodeCbor(getSessionTranscript())
         val existingDocTypes = mutableSetOf<String>()
 
         val unsignedVPTokens = credentialInputDescriptorMappings.map { credentialInputDescriptorMapping ->
             buildPayloadAndUnsignedVPToken(
                 credential = credentialInputDescriptorMapping.credential,
                 sessionTranscript = sessionTranscript,
-                deviceNameSpacesBytes = deviceNameSpacesBytes,
                 uuidToDeviceAuthenticationBytes = uuidToDeviceAuthenticationBytes,
                 setIdentifier = { identifier ->
                     credentialInputDescriptorMapping.identifier = identifier
@@ -64,15 +59,13 @@ internal class UnsignedMdocVPTokenBuilder(
     ): Pair<Map<String, ByteArray>, List<UnsignedVPToken>> {
         val uuidToDeviceAuthenticationBytes = mutableMapOf<String, ByteArray>()
 
-        val sessionTranscript: DataItem = getSessionTranscript()
-        val deviceNameSpacesBytes: ByteString = getDeviceNamespacesBytes()
+        val sessionTranscript = encodeCbor(getSessionTranscript())
         val existingDocTypes = mutableSetOf<String>()
 
         val unsignedVPTokens = credentialToCredentialQueryIdMappings.map { mapping ->
             buildPayloadAndUnsignedVPToken(
                 credential = mapping.credential,
                 sessionTranscript = sessionTranscript,
-                deviceNameSpacesBytes = deviceNameSpacesBytes,
                 uuidToDeviceAuthenticationBytes = uuidToDeviceAuthenticationBytes,
                 setIdentifier = { identifier ->
                     mapping.identifier = identifier
@@ -96,27 +89,14 @@ internal class UnsignedMdocVPTokenBuilder(
         return sessionTranscript
     }
 
-    // DeviceNameSpacesBytes = #6.24(bstr .cbor emptyMap)
-    private fun getDeviceNamespacesBytes(): ByteString {
-        return taggedCbor24(CborMap())
-    }
-
     private fun buildPayloadAndUnsignedVPToken(
         credential: Any,
-        sessionTranscript: DataItem,
-        deviceNameSpacesBytes: ByteString,
+        sessionTranscript: ByteArray,
         uuidToDeviceAuthenticationBytes: MutableMap<String, ByteArray>,
         setIdentifier: (String) -> Unit,
         existingDocTypes: MutableSet<String>
     ): UnsignedVPToken {
         val docType = (getMdocDocType(credential, className))
-
-        val deviceAuthentication: DataItem = cborArrayOf(
-            "DeviceAuthentication",
-            (sessionTranscript),
-            UnicodeString(docType),
-            deviceNameSpacesBytes
-        )
 
         if (existingDocTypes.contains(docType)) {
             throw OpenID4VPExceptions.InvalidData(
@@ -126,12 +106,10 @@ internal class UnsignedMdocVPTokenBuilder(
         }
         existingDocTypes.add(docType)
 
-        val deviceAuthenticationBytes = taggedCbor24(deviceAuthentication)
-
         val identifier = UUIDGenerator.generateUUID()
         val (keyRef, alg) = extractMdocKeyReferenceAndAlg(credential as String, className)
 
-        val bytesToSign = CoseSignature1Utils.createSignature1Structure(deviceAuthenticationBytes, alg)
+        val bytesToSign = MdocDeviceResponseUtils.deviceAuthenticationDataToSign(sessionTranscript, docType, alg)
         uuidToDeviceAuthenticationBytes[identifier] = bytesToSign
         setIdentifier(identifier)
 

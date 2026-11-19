@@ -27,6 +27,10 @@ fun taggedCbor24(input: DataItem): ByteArray {
     return baos.toByteArray()
 }
 
+// Format: #6.24(bstr), for bytes that are already encoded CBOR and must stay exactly as given
+fun taggedCbor24(encodedCbor: ByteArray): ByteArray =
+    encodeCbor(ByteString(encodedCbor).apply { setTag(24) })
+
 fun taggedCbor24(input: Map): ByteString {
     val inner = ByteArrayOutputStream()
     CborEncoder(inner).encode(input)

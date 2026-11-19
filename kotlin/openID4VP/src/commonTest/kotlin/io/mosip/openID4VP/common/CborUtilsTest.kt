@@ -25,6 +25,17 @@ class CborUtilsTest {
     }
 
     @Test
+    fun `taggedCbor24 wraps already encoded bytes exactly as given`() {
+        // an array of 3 with its count in the long form (98 03), which re-encoding would shorten to 83
+        val encoded = byteArrayOf(0x98.toByte(), 0x03, 0xF6.toByte(), 0xF6.toByte(), 0xF6.toByte())
+
+        val tagged = taggedCbor24(encoded)
+
+        // tag 24, then a byte string of length 5, then the bytes unchanged
+        assertContentEquals(byteArrayOf(0xD8.toByte(), 0x18, 0x45) + encoded, tagged)
+    }
+
+    @Test
     fun `encodeCbor and decodeCbor should be inverse operations`() {
         val testString = UnicodeString("test")
         val encoded = encodeCbor(testString)

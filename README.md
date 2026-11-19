@@ -132,6 +132,14 @@ Build OpenID4VP capabilities faster with a library designed to remove protocol c
     }
     ```
 
+### In-person mdoc presentation (ISO/IEC 18013-5)
+
+Besides online sharing, the library builds the `DeviceResponse` for an in-person mdoc session, for
+example one run over Bluetooth by Tuvali's `MdocPresenter`. There is no authorization request and
+no verifier URL: the transport supplies the session transcript and sends the answer, and the wallet
+signs device authentication through a callback. See
+[MdocProximity.buildDeviceResponse](kotlin/README.md#mdocproximitybuilddeviceresponse).
+
 
 ---
 

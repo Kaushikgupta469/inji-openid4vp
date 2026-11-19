@@ -126,6 +126,7 @@ The following credential formats are supported for sharing:
   - [sendVPResponseToVerifier](#sendvpresponsetoverifier)
   - [constructErrorInfo](#constructerrorinfo)
   - [sendErrorInfoToVerifier](#senderrorinfotoverifier)
+  - [MdocProximity.buildDeviceResponse](#mdocproximitybuilddeviceresponse)
 
 
 ## Installation
@@ -693,6 +694,52 @@ openID4VP.sendErrorToVerifier(Exception("User did not give consent to share the 
 #### Exceptions
 
 1. ErrorDispatchFailure is thrown if any issue occurs while sending the Authorization Error response to the Verifier.
+
+### MdocProximity.buildDeviceResponse
+- Builds an ISO/IEC 18013-5 `DeviceResponse` for an in-person (proximity) session, for example one run by Tuvali's `MdocPresenter` over Bluetooth.
+- There is no authorization request and no verifier URL: this method only builds the answer, and the transport sends it.
+- The wallet signs device authentication through the `sign` callback; the library holds no keys.
+
+```kotlin
+    val deviceResponse: ByteArray = MdocProximity.buildDeviceResponse(
+        sessionTranscriptBytes: ByteArray,
+        credentials: List<String>, // or List<ByteArray>
+        sign: suspend (MdocSigningInput) -> ByteArray,
+    )
+```
+
+#### Request Parameters
+
+| Name                   | Type                                    | Description                                                                                                                                                                  |
+|------------------------|-----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| sessionTranscriptBytes | ByteArray                               | The SessionTranscriptBytes (tag 24 around the SessionTranscript) exactly as the transport produced them. They are never decoded and re-encoded.                             |
+| credentials            | List<String> or List<ByteArray>         | One `IssuerSigned` mdoc per docType, as base64url or CBOR, already reduced to the elements the holder approved. Issuer-signed items and `issuerAuth` are kept byte for byte. |
+| sign                   | suspend (MdocSigningInput) -> ByteArray | Called once per document with `holderKeyReference`, `signatureAlgorithm` and `dataToSign`. Must return the raw signature. An exception thrown here fails the call unchanged. |
+
+#### Response Parameters
+
+| Name           | Type      | Description                                                                              |
+|----------------|-----------|------------------------------------------------------------------------------------------|
+| deviceResponse | ByteArray | CBOR `DeviceResponse` with `version` "1.0", one document per credential, and `status` 0. |
+
+#### Example Usage
+
+```kotlin
+val deviceResponse = MdocProximity.buildDeviceResponse(
+    sessionTranscriptBytes = request.sessionTranscript, // from the transport, unchanged
+    credentials = approvedMdocs,
+) { input ->
+    wallet.sign(input.dataToSign, input.holderKeyReference, input.signatureAlgorithm)
+}
+```
+
+#### Exceptions
+
+1. `InvalidData` exception is thrown if:
+    - A credential is not valid base64url or CBOR, or has no `issuerSigned` map.
+    - The MSO has no docType, or two credentials share a docType.
+    - A kept item does not match its digest in the MSO.
+    - A signature returned by `sign` has the wrong length.
 
 ### Exception Handling Enhancement
 
