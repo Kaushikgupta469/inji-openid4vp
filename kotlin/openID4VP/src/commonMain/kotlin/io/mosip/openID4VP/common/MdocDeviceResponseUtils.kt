@@ -7,6 +7,7 @@ import co.nstant.`in`.cbor.model.UnicodeString
 import io.mosip.openID4VP.cose.CoseSignature1Utils
 import io.mosip.openID4VP.exceptions.OpenID4VPExceptions.InvalidData
 import java.io.ByteArrayInputStream
+import co.nstant.`in`.cbor.model.Array as CborArray
 import co.nstant.`in`.cbor.model.Map as CborMap
 
 private const val ARRAY_OF_FOUR: Byte = 0x84.toByte()
@@ -38,7 +39,7 @@ internal object MdocDeviceResponseUtils {
     /**
      * The encoded SessionTranscript inside SessionTranscriptBytes (#6.24(bstr .cbor SessionTranscript),
      * clause 9.1.5.1), to be passed to [deviceAuthenticationDataToSign] as it is. Anything other than
-     * exactly one tag 24 byte string is rejected.
+     * exactly one tag 24 byte string holding one 3-item array is rejected.
      */
     fun sessionTranscriptFrom(sessionTranscriptBytes: ByteArray, className: String): ByteArray {
         val items = try {
@@ -49,6 +50,14 @@ internal object MdocDeviceResponseUtils {
         val tagged = items.singleOrNull() as? ByteString
         if (tagged == null || tagged.tag?.value != TAG_ENCODED_CBOR) {
             throw InvalidData("Session transcript bytes must be one tag 24 byte string", className)
+        }
+        val transcript = try {
+            CborDecoder(ByteArrayInputStream(tagged.bytes)).decode().singleOrNull()
+        } catch (exception: Exception) {
+            throw InvalidData("Session transcript is not CBOR", className, cause = exception)
+        }
+        if ((transcript as? CborArray)?.dataItems?.size != 3) {
+            throw InvalidData("Session transcript must be one 3-item array", className)
         }
         return tagged.bytes
     }

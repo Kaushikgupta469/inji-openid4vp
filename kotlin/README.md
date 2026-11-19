@@ -713,7 +713,7 @@ openID4VP.sendErrorToVerifier(Exception("User did not give consent to share the 
 | Name                   | Type                                    | Description                                                                                                                                                                  |
 |------------------------|-----------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | sessionTranscriptBytes | ByteArray                               | The SessionTranscriptBytes (tag 24 around the SessionTranscript) exactly as the transport produced them. They are never decoded and re-encoded.                             |
-| credentials            | List<String> or List<ByteArray>         | One `IssuerSigned` mdoc per docType, as base64url or CBOR, already reduced to the elements the holder approved. Issuer-signed items and `issuerAuth` are kept byte for byte. |
+| credentials            | List<String> or List<ByteArray>         | One `IssuerSigned` mdoc per docType, as base64url or CBOR, already reduced to the elements the holder approved. |
 | sign                   | suspend (MdocSigningInput) -> ByteArray | Called once per document with `holderKeyReference`, `signatureAlgorithm` and `dataToSign`. Must return the raw signature. An exception thrown here fails the call unchanged. |
 
 #### Response Parameters

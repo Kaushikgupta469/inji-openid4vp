@@ -17,6 +17,9 @@ import java.security.MessageDigest
 // Table 21: digest algorithm identifiers, which are also the JCA names
 private val DIGEST_ALGORITHMS = setOf("SHA-256", "SHA-384", "SHA-512")
 private const val TAG_ENCODED_CBOR = 24L
+private const val COSE_KEY_CRV = -1L
+private const val COSE_CRV_ED25519 = 6L
+private const val COSE_CRV_ED448 = 7L
 
 internal object MdocCredentialUtils {
 
@@ -148,6 +151,22 @@ internal object MdocCredentialUtils {
         return keyRef to alg
     }
 
+    internal fun rawSignatureLength(algorithm: String, mso: Map): Int? = when (algorithm) {
+        "ES256" -> 64
+        "EdDSA" -> when (deviceKeyCurve(mso)) {
+            COSE_CRV_ED25519 -> 64
+            COSE_CRV_ED448 -> 114
+            else -> null
+        }
+        else -> null
+    }
+
+    internal fun deviceKeyCurve(mso: Map): Long? {
+        val deviceKeyInfo = mso[UnicodeString("deviceKeyInfo")] as? Map
+        val deviceKey = deviceKeyInfo?.get(UnicodeString("deviceKey")) as? Map
+        return (deviceKey?.get(NegativeInteger(COSE_KEY_CRV)) as? UnsignedInteger)?.value?.toLong()
+    }
+
     /**
      * Throws InvalidData unless every IssuerSignedItemBytes of [issuerSigned] matches its digest in
      * the [mso] (ISO/IEC 18013-5 clause 9.1.2.5, over the item as it will be sent), and each
@@ -186,12 +205,21 @@ internal object MdocCredentialUtils {
         }
     }
 
+    private fun decodeSingleCborItem(bytes: ByteArray, className: String): DataItem {
+        val cborItems = try {
+            CborDecoder(ByteArrayInputStream(bytes)).decode()
+        } catch (exception: Exception) {
+            throw InvalidData("Not valid CBOR: ${exception.message}", className, cause = exception)
+        }
+        return cborItems.singleOrNull() ?: throw InvalidData("Expected one CBOR item, found ${cborItems.size}", className)
+    }
+
     private fun readIssuerSignedItem(item: DataItem, nameSpace: String, className: String): Pair<Long, String> {
         val bytes = item as? ByteString
         if (bytes == null || bytes.tag?.value != TAG_ENCODED_CBOR) {
             throw InvalidData("An item in $nameSpace is not IssuerSignedItemBytes (tag 24)", className)
         }
-        val decoded = CborDecoder(ByteArrayInputStream(bytes.bytes)).decode().singleOrNull() as? Map
+        val decoded = decodeSingleCborItem(bytes.bytes, className) as? Map
             ?: throw InvalidData("An item in $nameSpace is not an IssuerSignedItem map", className)
         val digestId = (decoded[UnicodeString("digestID")] as? UnsignedInteger)?.value?.toLong()
             ?: throw InvalidData("An item in $nameSpace has no digestID", className)
@@ -215,14 +243,14 @@ internal object MdocCredentialUtils {
         val payloadBytes = issuerAuthArray.dataItems[2] as? ByteString
             ?: throw InvalidData("issuerAuth payload missing", className)
 
-        val firstDecoded = CborDecoder(ByteArrayInputStream(payloadBytes.bytes)).decode().first()
+        val firstDecoded = decodeSingleCborItem(payloadBytes.bytes, className)
 
         // Handle Tag 24 (encoded CBOR)
         val msoDataItem = if (firstDecoded.tag?.value == 24L) {
             val innerBytes = (firstDecoded as? ByteString)?.bytes
                 ?: throw InvalidData("Tag 24 inner not bstr", className)
 
-            CborDecoder(ByteArrayInputStream(innerBytes)).decode().first()
+            decodeSingleCborItem(innerBytes, className)
         } else {
             firstDecoded
         }

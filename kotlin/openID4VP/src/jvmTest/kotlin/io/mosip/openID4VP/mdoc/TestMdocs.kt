@@ -30,11 +30,19 @@ internal class TestElement(val nameSpace: String, val identifier: String, val va
  * P-256 deviceKey and a placeholder issuer signature (OVP does not check the issuer signature).
  */
 internal object TestMdocs {
-    private val deviceKey = cborMapOf(
+    val p256DeviceKey = cborMapOf(
         1 to 2,
         -1 to 1,
         -2 to ByteArray(32) { 1 },
         -3 to ByteArray(32) { 2 },
+    )
+
+    // curve 6 is Ed25519, 7 is Ed448
+    fun edDsaDeviceKey(curve: Int, keyBytes: Int) = cborMapOf(
+        1 to 1,
+        3 to -8,
+        -1 to curve,
+        -2 to ByteArray(keyBytes) { 3 },
     )
 
     fun issuerSignedItem(digestId: Long, element: TestElement): ByteString {
@@ -52,6 +60,7 @@ internal object TestMdocs {
         docType: String,
         elements: List<TestElement>,
         digestAlgorithm: String = "SHA-256",
+        deviceKey: DataItem = p256DeviceKey,
         items: ((Map<String, List<ByteString>>) -> Map<String, List<ByteString>>)? = null,
     ): CborMap {
         val generated = elements.withIndex()
@@ -88,8 +97,8 @@ internal object TestMdocs {
         }
     }
 
-    fun credential(docType: String, vararg elements: TestElement): ByteArray =
-        encodeCbor(issuerSigned(docType, elements.toList()))
+    fun credential(docType: String, vararg elements: TestElement, deviceKey: DataItem = p256DeviceKey): ByteArray =
+        encodeCbor(issuerSigned(docType, elements.toList(), deviceKey = deviceKey))
 
     fun digestIdOf(item: ByteString): Long {
         val decoded = io.mosip.openID4VP.common.decodeCbor(item.bytes) as CborMap
