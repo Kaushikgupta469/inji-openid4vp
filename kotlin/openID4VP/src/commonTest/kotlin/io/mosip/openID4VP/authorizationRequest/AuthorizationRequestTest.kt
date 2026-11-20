@@ -26,6 +26,7 @@ import io.mosip.openID4VP.networkManager.NetworkResponse
 import io.mosip.openID4VP.networkManager.exception.NetworkManagerClientExceptions.NetworkRequestFailed
 import io.mosip.openID4VP.testData.assertDoesNotThrow
 import io.mosip.openID4VP.testData.assertOpenId4VPException
+import io.mosip.openID4VP.testData.authRequestWithRedirectUriByValue
 import io.mosip.openID4VP.testData.clientIdOfPreRegistered
 import io.mosip.openID4VP.testData.clientIdOfReDirectUriDraft23
 import io.mosip.openID4VP.testData.createAuthorizationRequestObject
@@ -466,6 +467,19 @@ class AuthorizationRequestTest {
                 encodedAuthorizationRequest
             )
         }
+    }
+
+    @Test
+    fun `should use client_id as response_uri for redirect uri scheme when response_uri is omitted`() {
+        val authorizationRequestParamsMap = requestParams + clientIdOfReDirectUriDraft23
+        val applicableFields = authRequestWithRedirectUriByValue - RESPONSE_URI.value
+
+        val encodedAuthorizationRequest =
+            createUrlEncodedData(authorizationRequestParamsMap, false, REDIRECT_URI, applicableFields)
+
+        val authorizationRequest = openID4VP.authenticateVerifier(encodedAuthorizationRequest)
+
+        assertEquals(responseUrl, authorizationRequest.responseUri)
     }
 
     @Test

@@ -234,17 +234,38 @@ class RedirectUriPrefixAuthorizationRequestHandlerTest {
     }
 
     @Test
-    fun `validateClientAuthenticity should throw exception when RESPONSE_URI is missing`() {
+    fun `validateClientAuthenticity should use client_id as response_uri when RESPONSE_URI is missing`() {
+        listOf("direct_post", "direct_post.jwt").forEach { responseMode ->
+            val modifiedParams = authorizationRequestParameters.toMutableMap()
+            modifiedParams[RESPONSE_MODE.value] = responseMode
+            modifiedParams.remove(RESPONSE_URI.value)
+
+            assertDoesNotThrow { createHandler(modifiedParams).validateClientAuthenticity() }
+            assertEquals(responseUrl, modifiedParams[RESPONSE_URI.value])
+        }
+    }
+
+    @Test
+    fun `authorization request should carry client_id as response_uri when RESPONSE_URI is missing`() {
         val modifiedParams = authorizationRequestParameters.toMutableMap()
         modifiedParams.remove(RESPONSE_URI.value)
-        val exception = assertFailsWith<OpenID4VPExceptions.MissingInput> {
+        val handler = createHandler(modifiedParams)
+
+        handler.validateClientAuthenticity()
+        assertDoesNotThrow { handler.prepareDispatchInfo() }
+        handler.validateAndParseRequestFields()
+
+        assertEquals(responseUrl, handler.createAuthorizationRequest().responseUri)
+    }
+
+    @Test
+    fun `validateClientAuthenticity should throw exception when RESPONSE_URI is empty`() {
+        val modifiedParams = authorizationRequestParameters.toMutableMap()
+        modifiedParams[RESPONSE_URI.value] = ""
+        val exception = assertFailsWith<OpenID4VPExceptions.InvalidInput> {
             createHandler(modifiedParams).validateClientAuthenticity()
         }
-        assertOpenId4VPException(
-            exception,
-            "Missing Input: response_uri param is required",
-            "invalid_request"
-        )
+        assertTrue(exception.message?.contains("response_uri") == true)
     }
 
     @Test

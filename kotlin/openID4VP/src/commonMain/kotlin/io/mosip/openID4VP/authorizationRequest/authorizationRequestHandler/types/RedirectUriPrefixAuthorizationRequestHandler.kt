@@ -80,8 +80,13 @@ class RedirectUriPrefixAuthorizationRequestHandler(
         }
     }
 
-    private fun validateResponseUriMatchesClientId(authRequestParam: Map<String, Any>) {
+    private fun validateResponseUriMatchesClientId(authRequestParam: MutableMap<String, Any>) {
         val responseUri = getStringValue(authRequestParam, RESPONSE_URI.value)
+
+        if (responseUri == null) {
+            authRequestParam[RESPONSE_URI.value] = extractClientIdPartOnly(authRequestParam)
+            return
+        }
 
         validate(RESPONSE_URI.value, responseUri, className)
 
