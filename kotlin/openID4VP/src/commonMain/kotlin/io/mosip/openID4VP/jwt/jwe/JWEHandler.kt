@@ -34,8 +34,8 @@ class JWEHandler(
                 EncryptionMethod.parse(contentEncryptionAlg)
             )
                 .keyID(publicKey.kid)
-                .agreementPartyUInfo(Base64URL(walletNonce))
-                .agreementPartyVInfo(Base64URL(verifierNonce))
+                .agreementPartyUInfo(Base64URL.encode(walletNonce))
+                .agreementPartyVInfo(Base64URL.encode(verifierNonce))
                 .build()
 
             val encrypter = EncryptionProvider.getEncrypter(publicKey)

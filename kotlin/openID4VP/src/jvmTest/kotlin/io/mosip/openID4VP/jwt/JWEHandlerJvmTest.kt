@@ -17,8 +17,8 @@ class JWEHandlerJvmTest {
     private lateinit var clientMetadata: ClientMetadataDraft23
     private lateinit var jweHandler: JWEHandler
     private lateinit var publicKey: Jwk
-    private val walletNonce = "d2FsbGV0Tm9uY2UxMjM" // "walletNonce123" base64url
-    private val verifierNonce = "dmVyaWZpZXJOb25jZTQ1Ng" // "verifierNonce456" base64url
+    private val walletNonce = "k5qdSnwnowi-U_iRi0cZuQ"
+    private val verifierNonce = "abc.DEF_123-xyz~"
 
     @BeforeTest
     fun setUp() {
@@ -52,8 +52,8 @@ class JWEHandlerJvmTest {
 
         val decodedJWEHeader = convertJsonToMap(String(decodeFromBase64Url(jweParts[0])))
 
-        assertEquals(walletNonce, decodedJWEHeader["apu"])
-        assertEquals(verifierNonce, decodedJWEHeader["apv"])
+        assertEquals(walletNonce, String(decodeFromBase64Url(decodedJWEHeader["apu"] as String)))
+        assertEquals(verifierNonce, String(decodeFromBase64Url(decodedJWEHeader["apv"] as String)))
         assertEquals(publicKey.kid, decodedJWEHeader["kid"])
         assertEquals("ECDH-ES", decodedJWEHeader["alg"])
         assertEquals("A256GCM", decodedJWEHeader["enc"])
